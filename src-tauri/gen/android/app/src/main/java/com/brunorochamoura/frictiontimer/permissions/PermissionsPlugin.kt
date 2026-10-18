@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -51,8 +52,12 @@ class PermissionsPlugin(private val activity: Activity) : Plugin(activity) {
           Uri.parse("package:${activity.packageName}"),
         )
         "accessibility" -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-        "notifications" -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-          putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
+        "notifications" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
+          }
+        } else {
+          Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${activity.packageName}"))
         }
         else -> throw IllegalArgumentException("Unknown settings target: ${args.kind}")
       }
