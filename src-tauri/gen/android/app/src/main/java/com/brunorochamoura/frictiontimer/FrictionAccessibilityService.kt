@@ -77,10 +77,15 @@ class FrictionAccessibilityService : AccessibilityService() {
   }
 
   private fun handleProceed(config: FrictionAppConfig) {
-    runtimeState.setCooldownUntil(
-      config.appId,
-      FrictionOverlayLogic.cooldownExpiry(System.currentTimeMillis(), config.durationSeconds),
-    )
+    if (config.durationSeconds == 0L) {
+      runtimeState.setCooldownUntil(config.appId, 0L)
+      foregroundSessionState.onUnlimitedSessionStarted(config.appId)
+    } else {
+      runtimeState.setCooldownUntil(
+        config.appId,
+        FrictionOverlayLogic.cooldownExpiry(System.currentTimeMillis(), config.durationSeconds),
+      )
+    }
     dismissOverlay("user_proceeded:${config.appId}")
   }
 
@@ -125,7 +130,12 @@ class FrictionAccessibilityService : AccessibilityService() {
 
     val config = configRepository.findByAppId(packageName) ?: return
     val nowMs = System.currentTimeMillis()
-    if (runtimeState.isInCooldown(packageName, nowMs)) {
+    val unlocked = if (config.durationSeconds == 0L) {
+      foregroundSessionState.unlimitedSessionPackage == packageName
+    } else {
+      runtimeState.isInCooldown(packageName, nowMs)
+    }
+    if (unlocked) {
       return
     }
 

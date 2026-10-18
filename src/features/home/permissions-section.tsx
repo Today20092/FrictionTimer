@@ -1,96 +1,32 @@
-import { ServiceButtonSkeleton } from "@/components/Skeletons";
-import type { ServicePermissionKey, ServiceStatus } from "@/lib/friction";
+import { ServiceButtonSkeleton } from "@/components/Skeletons"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import type { ServicePermissionKey, ServiceStatus } from "@/lib/friction"
 
-type PermissionsSectionProps = {
-  loading: boolean;
-  error: Error | null;
-  data: ServiceStatus;
-  onOpenSettings: (key: ServicePermissionKey) => Promise<void>;
-};
-
-export function PermissionsSection({
-  loading,
-  error,
-  data,
-  onOpenSettings,
-}: PermissionsSectionProps) {
-  const anyDisabled = !loading && (!data.overlay || !data.accessibility);
-
+export function PermissionsSection({ loading, error, data, onOpenSettings }: {
+  loading: boolean; error: Error | null; data: ServiceStatus
+  onOpenSettings: (key: ServicePermissionKey) => Promise<void>
+}) {
+  const anyDisabled = !loading && (!data.overlay || !data.accessibility)
   return (
-    <section className="space-y-3">
-      <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-        Permissions
-      </h2>
-
-      {error && (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          Couldn't load permissions: {error.message}
-        </p>
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-semibold">Permissions</h2>
+        <p className="text-sm text-muted-foreground">Both permissions keep your pauses working.</p>
+      </div>
+      {error && <Alert variant="destructive"><AlertDescription>{error.message}</AlertDescription></Alert>}
+      {loading ? <><ServiceButtonSkeleton /><ServiceButtonSkeleton /></> : (
+        <div className="flex flex-col gap-3">
+          {([["overlay", "Display over other apps"], ["accessibility", "Accessibility service"]] as const).map(([key, label]) => (
+            <Button key={key} variant="outline" className="h-auto justify-between gap-3 py-4" onClick={() => { void onOpenSettings(key).catch(() => { /* Hook surfaces the error. */ }) }}>
+              <span className="min-w-0 flex-1 text-left wrap-anywhere">{label}</span>
+              <Badge variant={data[key] ? "secondary" : "outline"}>{data[key] ? "Enabled" : "Set up"}</Badge>
+            </Button>
+          ))}
+        </div>
       )}
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {loading ? (
-          <>
-            <ServiceButtonSkeleton />
-            <ServiceButtonSkeleton />
-          </>
-        ) : (
-          <>
-            <ServiceButton
-              label="Overlay"
-              enabled={data.overlay}
-              onClick={() => {
-                void onOpenSettings("overlay");
-              }}
-            />
-            <ServiceButton
-              label="Accessibility Service"
-              enabled={data.accessibility}
-              onClick={() => {
-                void onOpenSettings("accessibility");
-              }}
-            />
-          </>
-        )}
-      </div>
-
-      <div aria-live="polite">
-        <p
-          aria-hidden={!anyDisabled}
-          className={`rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive ${
-            anyDisabled ? "" : "invisible"
-          }`}
-        >
-          Friction Timer needs both permissions to intercept apps. Tap a button
-          above to grant.
-        </p>
-      </div>
+      {anyDisabled && <Alert><AlertTitle>Finish setting up</AlertTitle><AlertDescription>Tap each permission above to enable it in Android settings.</AlertDescription></Alert>}
     </section>
-  );
-}
-
-type ServiceButtonProps = {
-  label: string;
-  enabled: boolean;
-  onClick: () => void;
-};
-
-function ServiceButton({ label, enabled, onClick }: ServiceButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary"
-    >
-      <span className="truncate text-sm font-medium">{label}</span>
-      <span
-        aria-label={enabled ? "enabled" : "disabled"}
-        className={`h-3 w-3 shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-card ${
-          enabled
-            ? "bg-success ring-success/40"
-            : "bg-destructive ring-destructive/40"
-        }`}
-      />
-    </button>
-  );
+  )
 }

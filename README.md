@@ -1,5 +1,6 @@
 <div align="center">
-  <h1>🚫 Friction Timer ⏳</h1>
+  <img src="public/brand/app-icon.svg" width="96" height="96" alt="Friction Timer hourglass" />
+  <h1>Friction Timer</h1>
   <p><i>Made by <a href="https://www.brunorochamoura.com/about/">BRM</a>.</i></p>
   <br />
 </div>
@@ -11,6 +12,22 @@ When you open an app you've added to the list, Friction Timer displays an overla
 You can wait for the timer to finish or cancel and back out.
 
 The point is simple: make impulsive opens slower.
+
+On supported Android 12+ devices, the settings screen and waiting overlay use the system's dynamic Material colors and light/dark appearance. Colors refresh when the settings screen regains focus or becomes visible. Other platforms and unsupported devices retain the gold-and-charcoal palette. The hourglass branding stays gold; Android launchers can recolor its monochrome themed icon.
+
+The [brand kit](public/brand/README.md) includes hourglass icons, monochrome variants, and wordmarks. Open `public/brand/index.html` for the visual reference.
+
+## Why I forked this app
+
+I forked Friction Timer because I want to help people spend less time hooked on their phones. I also want to improve the UI, fix bugs, and contribute more to the app.
+
+I believe phones are very good tools. We use them to get things done, take photos, and keep memories. But a phone is also its own world. There is always something else to open, watch, or scroll through. With so much available at any moment, we need to be aware of what we're doing and set limits for ourselves.
+
+Social media can be useful too. Sometimes we go there to create, find ideas, or enjoy what other people share. That's fine. I want us to notice when we chose to do that and when we just tapped an app without thinking and started scrolling.
+
+My goal for this fork is to help you pause before that happens and become more aware of where your time goes. The waiting period gives you a moment to ask whether you actually want to open the app.
+
+One idea I want to explore is making apps with scrolling feeds, such as TikTok, Facebook, Instagram, X, and YouTube, visible as recommended apps to add friction to on the first screen. You would still be able to choose any app. This is a planned improvement, not a feature available yet.
 
 ## What it does
 

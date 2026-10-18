@@ -7,6 +7,26 @@ import org.junit.Test
 
 class FrictionForegroundSessionStateMachineTest {
   @Test
+  fun unlimitedSessionEndsOnlyAfterConfirmedExitAndReentryIsEvaluated() {
+    val stateMachine = FrictionForegroundSessionStateMachine()
+    stateMachine.onOverlayShown("com.example.app")
+    stateMachine.onUnlimitedSessionStarted("com.example.app")
+    stateMachine.onOverlayDismissed()
+
+    assertEquals(null, stateMachine.onForegroundObserved("com.example.app").packageToEvaluateForOverlay)
+    stateMachine.onForegroundObserved("com.android.launcher")
+    stateMachine.onForegroundObserved(null)
+    stateMachine.onForegroundObserved("com.example.app")
+    assertEquals("com.example.app", stateMachine.unlimitedSessionPackage)
+
+    assertTrue(stateMachine.onForegroundObserved("com.android.launcher").shouldRecheckForeground)
+    val exit = stateMachine.onForegroundObserved("com.android.launcher")
+    assertFalse(exit.dismissActiveOverlay)
+    assertEquals(null, stateMachine.unlimitedSessionPackage)
+    assertEquals("com.example.app", stateMachine.onForegroundObserved("com.example.app").packageToEvaluateForOverlay)
+  }
+
+  @Test
   fun differentForegroundNeedsConfirmationBeforeDismissal() {
     val stateMachine = FrictionForegroundSessionStateMachine()
     stateMachine.onOverlayShown("com.instagram.android")

@@ -15,6 +15,13 @@ import type {
 
 const CHANGE_EVENT = "friction-store-change";
 
+export async function getSystemTheme(): Promise<{
+  dark: boolean;
+  colors: Record<string, string>;
+} | null> {
+  return invoke("get_system_theme");
+}
+
 function emitChange(key: string): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { key } }));
@@ -86,6 +93,7 @@ export async function listInstalledApps(query = ""): Promise<InstalledApp[]> {
 // ---------- Formatting helpers ----------
 
 export function formatDuration(totalSeconds: number): string {
+  if (totalSeconds === 0) return "Unlimited";
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;

@@ -1,6 +1,7 @@
 mod installed_apps;
 mod permissions;
 mod storage;
+mod theme;
 
 use installed_apps::list_installed_apps;
 use permissions::{get_service_status, open_service_settings};
@@ -48,6 +49,7 @@ pub fn run() {
         })
         .plugin(installed_apps::init())
         .plugin(permissions::init())
+        .plugin(theme::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             list_apps,
@@ -57,7 +59,8 @@ pub fn run() {
             delete_app,
             list_installed_apps,
             get_service_status,
-            open_service_settings
+            open_service_settings,
+            theme::get_system_theme
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

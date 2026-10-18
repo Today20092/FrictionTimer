@@ -1,3 +1,4 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AppHeader } from "@/components/AppHeader";
@@ -36,9 +37,9 @@ function EditAppPage() {
         {loading && <EditFormSkeleton />}
 
         {error && (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <Alert variant="destructive"><AlertDescription>
             Couldn't load app: {error.message}
-          </p>
+          </AlertDescription></Alert>
         )}
 
         {!loading && app && <AppForm initial={app} />}

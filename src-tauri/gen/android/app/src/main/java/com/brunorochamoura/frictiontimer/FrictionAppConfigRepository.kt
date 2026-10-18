@@ -32,7 +32,7 @@ class FrictionAppConfigRepository(private val context: Context) {
 
         val waitSeconds = cursor.getLong(2)
         val durationSeconds = cursor.getLong(3)
-        if (waitSeconds < 1L || durationSeconds < 1L) {
+        if (waitSeconds < 1L || durationSeconds < 0L) {
           return null
         }
 

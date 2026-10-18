@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Friction Timer · Brand kit</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#282828;color:#ebdbb2;font:16px/1.6 'JetBrains Mono',monospace}main{max-width:1080px;margin:auto;padding:64px 24px}h1{font-size:clamp(28px,6vw,56px);letter-spacing:-.06em;line-height:1.15;margin:20px 0}h2{font-size:20px;margin:48px 0 16px}p{max-width:680px;color:#bdae93}small{color:#bdae93}.eyebrow{color:#fabd2f;letter-spacing:.14em;font-size:12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}.card{padding:32px;background:#32302f;border:1px solid #504945;border-radius:16px}.card img{display:block;margin:0 auto 24px;width:128px;height:128px}.light{background:#f9f5d7;color:#282828}.light small{color:#504945}.wordmark{width:100%;height:auto;display:block}.sizes{display:flex;gap:24px;align-items:center;flex-wrap:wrap;padding:24px 0}.sizes img{display:block}a{color:inherit;text-underline-offset:4px}.swatches{display:flex;gap:16px;flex-wrap:wrap}.swatches span{padding:16px;border-radius:8px;border:1px solid #504945}code{color:#fabd2f}
+.card img.wordmark{width:100%;height:auto;margin:0}
+</style>
+<main>
+<div class="eyebrow">FRICTION TIMER / VISUAL IDENTITY</div>
+<h1>A little time.<br>A deliberate choice.</h1>
+<p>An emoji-like hourglass with warm gold sand, cream glass, and sturdy rounded caps. Simple geometry holds its shape at small sizes; the falling sand makes the pause visible.</p>
+<h2>The mark</h2>
+<div class="grid">
+<div class="card"><img src="app-icon.svg" alt="Gold and cream hourglass on charcoal"><strong>Application</strong><br><small>Charcoal tile · full color</small></div>
+<div class="card"><img src="hourglass.svg" alt="Transparent color hourglass"><strong>Transparent</strong><br><small>Headers and illustrations</small></div>
+<div class="card light"><img src="hourglass-monochrome.svg" alt="Single ink hourglass"><strong>Single ink</strong><br><small>Print and neutral contexts</small></div>
+<div class="card"><img src="hourglass-reversed.svg" alt="Cream hourglass"><strong>Reversed</strong><br><small>Dark backgrounds</small></div>
+<div class="card light"><img src="hourglass-grayscale.svg" alt="Grayscale hourglass"><strong>Grayscale</strong><br><small>Color-free reproduction</small></div>
+</div>
+<h2>Monospace wordmark</h2>
+<div class="card"><img class="wordmark" src="wordmark-reversed.png" alt="Friction Timer in JetBrains Mono Bold"></div>
+<p>JetBrains Mono Bold. Use the supplied PNG for identical typography everywhere. SVG wordmarks retain editable text and need JetBrains Mono installed for an exact match.</p>
+<h2>Small by design</h2>
+<div class="sizes"><img src="app-icon-16.png" width="16" height="16" alt="16 pixel icon"><img src="app-icon-24.png" width="24" height="24" alt="24 pixel icon"><img src="app-icon-32.png" width="32" height="32" alt="32 pixel icon"><img src="app-icon-48.png" width="48" height="48" alt="48 pixel icon"><img src="app-icon-64.png" width="64" height="64" alt="64 pixel icon"><img src="app-icon-128.png" width="128" height="128" alt="128 pixel icon"></div>
+<h2>Palette</h2>
+<div class="swatches"><span style="background:#fabd2f;color:#282828">Gold #FABD2F</span><span style="background:#ebdbb2;color:#282828">Cream #EBDBB2</span><span>Charcoal #282828</span><span style="background:#504945">Frame #504945</span></div>
+<h2>Use the kit</h2>
+<p>SVG masters plus transparent PNGs at 16, 24, 32, 48, 64, 128, 256, 512, and 1024 pixels. Keep clear space of at least one cap height. Preserve proportions; use the reversed mark on dark backgrounds and the dark mark on light backgrounds.</p>
+<p>Android gets separate adaptive foreground, background, and monochrome layers. Desktop and iOS exports live in <code>src-tauri/icons</code>. See <a href="README.md">asset and regeneration notes</a>.</p>
+</main>
+</html>

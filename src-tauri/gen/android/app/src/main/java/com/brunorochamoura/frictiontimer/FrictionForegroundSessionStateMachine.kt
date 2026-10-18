@@ -12,6 +12,14 @@ class FrictionForegroundSessionStateMachine(
   var activeOverlayPackage: String? = null
     private set
 
+  var unlimitedSessionPackage: String? = null
+    private set
+
+  fun onUnlimitedSessionStarted(packageName: String) {
+    unlimitedSessionPackage = packageName
+    clearPendingExit()
+  }
+
   private var pendingExitPackage: String? = null
   private var pendingExitObservations: Int = 0
 
@@ -26,7 +34,7 @@ class FrictionForegroundSessionStateMachine(
   }
 
   fun onForegroundObserved(packageName: String?): FrictionForegroundTransition {
-    val activePackage = activeOverlayPackage
+    val activePackage = activeOverlayPackage ?: unlimitedSessionPackage
     if (activePackage == null) {
       clearPendingExit()
       return FrictionForegroundTransition(packageToEvaluateForOverlay = packageName)
@@ -49,8 +57,9 @@ class FrictionForegroundSessionStateMachine(
     }
 
     clearPendingExit()
+    unlimitedSessionPackage = null
     return FrictionForegroundTransition(
-      dismissActiveOverlay = true,
+      dismissActiveOverlay = activeOverlayPackage != null,
       packageToEvaluateForOverlay = packageName,
     )
   }
