@@ -1,4 +1,5 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AppHeader } from "@/components/AppHeader";
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/app/$id")({
 function EditAppPage() {
   const { id } = useParams({ from: "/app/$id" });
   const navigate = useNavigate();
-  const { data: app, loading, error } = useApp(id);
+  const { data: app, loading, error, refresh } = useApp(id);
 
   // Redirect to home only after the fetch has resolved and produced nothing.
   useEffect(() => {
@@ -34,15 +35,16 @@ function EditAppPage() {
       <main className="container-app flex-1 py-6">
         <h2 className="mb-4 text-lg font-bold">Edit application</h2>
 
-        {loading && <EditFormSkeleton />}
+        {loading && !app && <EditFormSkeleton />}
 
         {error && (
           <Alert variant="destructive"><AlertDescription>
             Couldn't load app: {error.message}
+            <Button type="button" variant="outline" onClick={refresh}>Retry</Button>
           </AlertDescription></Alert>
         )}
 
-        {!loading && app && <AppForm initial={app} />}
+        {app && <AppForm key={app.id} initial={app} />}
       </main>
     </div>
   );

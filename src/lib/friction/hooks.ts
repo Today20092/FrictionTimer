@@ -114,7 +114,7 @@ export function useAppMutations() {
   );
   const remove = useCallback((id: string) => wrap(() => api.deleteApp(id)), [wrap]);
 
-  return { saving, error, create, update, remove };
+  return { saving, error, clearError: () => setError(null), create, update, remove };
 }
 
 // ---------- Service status ----------
@@ -165,7 +165,7 @@ export function useServiceStatus() {
     [],
   );
 
-  return { ...state, error: actionError ?? state.error, openSettings };
+  return { ...state, settingsError: actionError, openSettings };
 }
 
 // ---------- Installed-apps search (mocked device inventory) ----------

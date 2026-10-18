@@ -23,6 +23,7 @@ export function HomePage() {
           loading={apps.loading}
           error={apps.error}
           data={apps.data}
+          onRetry={apps.refresh}
         />
 
         <Separator />
@@ -30,7 +31,9 @@ export function HomePage() {
         <PermissionsSection
           loading={services.loading}
           error={services.error}
+          settingsError={services.settingsError}
           data={services.data}
+          onRetry={services.refresh}
           onOpenSettings={services.openSettings}
         />
       </main>
