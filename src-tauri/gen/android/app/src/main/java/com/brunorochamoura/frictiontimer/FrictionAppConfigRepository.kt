@@ -19,7 +19,7 @@ class FrictionAppConfigRepository(private val context: Context) {
       db = SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)
       db.rawQuery(
         """
-        SELECT app_id, name, wait_seconds, duration_seconds, messages_json
+        SELECT *
         FROM friction_apps
         WHERE app_id = ?
         LIMIT 1
@@ -30,18 +30,21 @@ class FrictionAppConfigRepository(private val context: Context) {
           return null
         }
 
-        val waitSeconds = cursor.getLong(2)
-        val durationSeconds = cursor.getLong(3)
+        val waitSeconds = cursor.getLong(cursor.getColumnIndexOrThrow("wait_seconds"))
+        val durationSeconds = cursor.getLong(cursor.getColumnIndexOrThrow("duration_seconds"))
         if (waitSeconds < 1L || durationSeconds < 0L) {
           return null
         }
 
         FrictionAppConfig(
-          appId = cursor.getString(0),
-          name = cursor.getString(1),
+          appId = cursor.getString(cursor.getColumnIndexOrThrow("app_id")),
+          name = cursor.getString(cursor.getColumnIndexOrThrow("name")),
           waitSeconds = waitSeconds,
           durationSeconds = durationSeconds,
-          messages = parseMessages(cursor.getString(4)),
+          messages = parseMessages(cursor.getString(cursor.getColumnIndexOrThrow("messages_json"))),
+          reminderEnabled = cursor.getColumnIndex("reminder_enabled").let { it >= 0 && cursor.getInt(it) != 0 },
+          reminderIntervalMinutes = cursor.getColumnIndex("reminder_interval_minutes")
+            .let { if (it >= 0) cursor.getLong(it).coerceAtLeast(1L) else 10L },
         )
       }
     } catch (ex: Exception) {

@@ -13,12 +13,12 @@ export function PermissionsSection({ loading, error, data, onOpenSettings }: {
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold">Permissions</h2>
-        <p className="text-sm text-muted-foreground">Both permissions keep your pauses working.</p>
+        <p className="text-sm text-muted-foreground">Overlay and accessibility permissions keep your pauses working. Notifications enable optional session reminders.</p>
       </div>
       {error && <Alert variant="destructive"><AlertDescription>{error.message}</AlertDescription></Alert>}
       {loading ? <><ServiceButtonSkeleton /><ServiceButtonSkeleton /></> : (
         <div className="flex flex-col gap-3">
-          {([["overlay", "Display over other apps"], ["accessibility", "Accessibility service"]] as const).map(([key, label]) => (
+          {([["overlay", "Display over other apps"], ["accessibility", "Accessibility service"], ["notifications", "Session reminder notifications"]] as const).map(([key, label]) => (
             <Button key={key} variant="outline" className="h-auto justify-between gap-3 py-4" onClick={() => { void onOpenSettings(key).catch(() => { /* Hook surfaces the error. */ }) }}>
               <span className="min-w-0 flex-1 text-left wrap-anywhere">{label}</span>
               <Badge variant={data[key] ? "secondary" : "outline"}>{data[key] ? "Enabled" : "Set up"}</Badge>

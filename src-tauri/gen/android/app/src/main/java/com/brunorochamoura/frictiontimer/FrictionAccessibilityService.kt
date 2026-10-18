@@ -2,8 +2,13 @@ package com.brunorochamoura.frictiontimer
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
@@ -17,6 +22,31 @@ class FrictionAccessibilityService : AccessibilityService() {
   private lateinit var runtimeState: FrictionRuntimeStateStore
   private lateinit var overlayController: FrictionOverlayController
   private val foregroundSessionState = FrictionForegroundSessionStateMachine()
+  private val reminderSession = FrictionReminderSession()
+  private lateinit var reminderNotifications: FrictionReminderNotifications
+  private val screenOffReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      mainHandler.removeCallbacks(processForegroundRunnable)
+      stopReminder()
+      foregroundSessionState.onScreenOff()
+      dismissOverlay("screen_off")
+    }
+  }
+  private val reminderTick = object : Runnable {
+    override fun run() {
+      val appId = reminderSession.appId ?: return
+      val config = configRepository.findByAppId(appId)
+      val screenOn = getSystemService(PowerManager::class.java).isInteractive
+      val foreground = resolveForegroundPackage(null)
+      if (!screenOn || config?.reminderEnabled != true || (foreground != null && foreground != appId)) {
+        stopReminder()
+        return
+      }
+      reminderSession.reminderMinutes(SystemClock.elapsedRealtime(), config.reminderIntervalMinutes)
+        ?.let { reminderNotifications.show(config.name, it) }
+      mainHandler.postDelayed(this, 1_000L)
+    }
+  }
 
   private var launcherPackages: Set<String> = emptySet()
   private var pendingForegroundPackageHint: String? = null
@@ -29,6 +59,8 @@ class FrictionAccessibilityService : AccessibilityService() {
 
     configRepository = FrictionAppConfigRepository(applicationContext)
     runtimeState = FrictionRuntimeStateStore(applicationContext)
+    reminderNotifications = FrictionReminderNotifications(applicationContext)
+    registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
     overlayController = FrictionOverlayController(
       context = applicationContext,
       windowManager = getSystemService(WINDOW_SERVICE) as WindowManager,
@@ -52,6 +84,7 @@ class FrictionAccessibilityService : AccessibilityService() {
     }
 
     if (!Settings.canDrawOverlays(this)) {
+      stopReminder()
       dismissOverlay("overlay_permission_revoked")
       return
     }
@@ -63,12 +96,15 @@ class FrictionAccessibilityService : AccessibilityService() {
   }
 
   override fun onInterrupt() {
+    stopReminder()
     if (::overlayController.isInitialized) {
       dismissOverlay("service_interrupted")
     }
   }
 
   override fun onDestroy() {
+    stopReminder()
+    if (::reminderNotifications.isInitialized) unregisterReceiver(screenOffReceiver)
     mainHandler.removeCallbacks(processForegroundRunnable)
     if (::overlayController.isInitialized) {
       dismissOverlay("service_destroyed")
@@ -87,9 +123,11 @@ class FrictionAccessibilityService : AccessibilityService() {
       )
     }
     dismissOverlay("user_proceeded:${config.appId}")
+    startReminder(config)
   }
 
   private fun handleCancel(config: FrictionAppConfig) {
+    stopReminder()
     dismissOverlay("user_cancelled:${config.appId}")
     performGlobalAction(GLOBAL_ACTION_HOME)
   }
@@ -101,7 +139,11 @@ class FrictionAccessibilityService : AccessibilityService() {
   }
 
   private fun processForegroundPackage(packageHint: String?) {
+    if (!getSystemService(PowerManager::class.java).isInteractive) return
     val resolvedPackage = resolveForegroundPackage(packageHint)
+    if (resolvedPackage != null && reminderSession.appId != null && reminderSession.appId != resolvedPackage) {
+      stopReminder()
+    }
     debugLog {
       "Processing foreground packageHint=${normalizePackageLabel(packageHint)} resolved=${normalizePackageLabel(resolvedPackage)} root=${normalizePackageLabel(rootInActiveWindow?.packageName?.toString())} state=${foregroundSessionState.debugState()}"
     }
@@ -136,6 +178,7 @@ class FrictionAccessibilityService : AccessibilityService() {
       runtimeState.isInCooldown(packageName, nowMs)
     }
     if (unlocked) {
+      startReminder(config)
       return
     }
 
@@ -146,6 +189,7 @@ class FrictionAccessibilityService : AccessibilityService() {
     )
 
     if (overlayController.show(config, message)) {
+      stopReminder()
       foregroundSessionState.onOverlayShown(config.appId)
       debugLog { "Overlay shown for ${config.appId}" }
     }
@@ -160,6 +204,20 @@ class FrictionAccessibilityService : AccessibilityService() {
     }
 
     return normalizePackageCandidate(packageHint)
+  }
+
+  private fun startReminder(config: FrictionAppConfig) {
+    if (!config.reminderEnabled) return
+    if (reminderSession.appId == config.appId) return
+    stopReminder()
+    reminderSession.start(config.appId, SystemClock.elapsedRealtime())
+    mainHandler.postDelayed(reminderTick, 1_000L)
+  }
+
+  private fun stopReminder() {
+    mainHandler.removeCallbacks(reminderTick)
+    reminderSession.reset()
+    if (::reminderNotifications.isInitialized) reminderNotifications.clear()
   }
 
   private fun resolveForegroundPackageFromWindows(): String? {
@@ -199,7 +257,7 @@ class FrictionAccessibilityService : AccessibilityService() {
     val normalized = packageName?.trim().orEmpty()
     return normalized
       .ifBlank { null }
-      ?.takeUnless { it == applicationContext.packageName }
+      ?.takeUnless { it == applicationContext.packageName && foregroundSessionState.activeOverlayPackage != null }
       ?.takeUnless(::isTransientSystemPackage)
   }
 

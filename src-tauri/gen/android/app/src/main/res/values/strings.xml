@@ -7,4 +7,7 @@
     <string name="friction_overlay_proceed">Proceed</string>
     <string name="friction_overlay_wait_seconds">Wait %1$ds</string>
     <string name="friction_overlay_fallback_message">Take a breath.</string>
+    <string name="reminder_channel_name">Session reminders</string>
+    <string name="reminder_title">Time to check in</string>
+    <string name="reminder_message">You\'ve been on %1$s for %2$d minutes</string>
 </resources>

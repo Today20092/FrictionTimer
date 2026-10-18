@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
+import { useEffect, useId, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { Plus, X } from "lucide-react"
 import { InstalledAppRowSkeleton } from "@/components/Skeletons"
 import { Button } from "@/components/ui/button"
@@ -10,17 +10,26 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { useInstalledApps, type FrictionAppDraft } from "@/lib/friction"
+import { useInstalledApps, useServiceStatus, type FrictionAppDraft } from "@/lib/friction"
 import { hmsToSeconds, secondsToHMS } from "./utils"
 
 type DraftSetter = Dispatch<SetStateAction<FrictionAppDraft>>
 
-export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId }: {
+export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId, suggestedAppId }: {
   draft: FrictionAppDraft; setDraft: DraftSetter; isEdit: boolean
-  coveredAppIds: Set<string>; currentAppId?: string
+  coveredAppIds: Set<string>; currentAppId?: string; suggestedAppId?: string
 }) {
   const [query, setQuery] = useState("")
   const { data: apps, loading, pending, error } = useInstalledApps(query)
+  const selectedSuggestion = useRef(false)
+  useEffect(() => {
+    if (selectedSuggestion.current || !suggestedAppId || loading || pending) return
+    const app = apps.find(app => app.appId === suggestedAppId)
+    if (app) {
+      selectedSuggestion.current = true
+      setDraft(current => current.appId ? current : { ...current, appId: app.appId, name: app.name })
+    }
+  }, [apps, loading, pending, suggestedAppId, setDraft])
   return (
     <FieldGroup>
       <Field>
@@ -58,6 +67,8 @@ export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId 
 }
 
 export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDraft: DraftSetter }) {
+  const services = useServiceStatus()
+  const reminderInvalid = !Number.isInteger(draft.reminderIntervalMinutes) || draft.reminderIntervalMinutes < 1 || draft.reminderIntervalMinutes > 2147483647
   const wait = secondsToHMS(draft.waitSeconds)
   const duration = secondsToHMS(draft.durationSeconds)
   const [finiteDuration, setFiniteDuration] = useState(draft.durationSeconds || 300)
@@ -77,6 +88,32 @@ export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDra
       </Field>
       {draft.durationSeconds !== 0 && <TimeBlock label="Duration" hint="How long the app stays unlocked. Minimum one second." {...duration}
         onChange={(h, m, s) => setDraft((current) => ({ ...current, durationSeconds: Math.max(1, hmsToSeconds(h, m, s)) }))} />}
+      <Field orientation="horizontal" className="rounded-xl border p-4">
+        <FieldContent>
+          <FieldLabel htmlFor="session-reminders">Session reminders</FieldLabel>
+          <FieldDescription id="session-reminders-hint">Quiet reminders while you use this app. Each visit starts fresh.</FieldDescription>
+        </FieldContent>
+        <Switch id="session-reminders" aria-describedby="session-reminders-hint" checked={draft.reminderEnabled}
+          onCheckedChange={reminderEnabled => setDraft(current => ({ ...current, reminderEnabled,
+            reminderIntervalMinutes: !reminderEnabled && (!Number.isInteger(current.reminderIntervalMinutes) || current.reminderIntervalMinutes < 1 || current.reminderIntervalMinutes > 2147483647) ? 10 : current.reminderIntervalMinutes,
+          }))} />
+      </Field>
+      {draft.reminderEnabled && <>
+        <Field data-invalid={reminderInvalid || undefined}>
+          <FieldLabel htmlFor="reminder-minutes">Remind me every (minutes)</FieldLabel>
+          <Input id="reminder-minutes" type="number" min={1} max={2147483647} step={1}
+            aria-invalid={reminderInvalid || undefined}
+            value={Number.isNaN(draft.reminderIntervalMinutes) ? "" : draft.reminderIntervalMinutes}
+            aria-describedby="reminder-minutes-hint"
+            onChange={event => setDraft(current => ({ ...current, reminderIntervalMinutes: event.target.valueAsNumber }))} />
+          <FieldDescription id="reminder-minutes-hint">Enter a positive whole number of minutes. Waiting time does not count.</FieldDescription>
+        </Field>
+        {!services.loading && !services.error && !services.data.notifications && <Alert><AlertDescription>
+          Notifications are disabled. Enable them to receive session reminders; your waiting pauses still work.
+          <Button type="button" variant="outline" onClick={() => { void services.openSettings("notifications").catch(() => {}) }}>Enable notifications</Button>
+        </AlertDescription></Alert>}
+        {services.error && <Alert variant="destructive"><AlertDescription>{services.error.message}</AlertDescription></Alert>}
+      </>}
     </FieldGroup>
   )
 }
