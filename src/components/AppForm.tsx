@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { cn } from "cn"
 import { useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { useApps, useAppMutations, type FrictionApp, type FrictionAppDraft } from "@/lib/friction"
@@ -51,7 +55,7 @@ export function AppForm({ initial }: { initial?: FrictionApp }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <Stepper stage={stage} />
 
       {stage === 0 && (
@@ -67,56 +71,54 @@ export function AppForm({ initial }: { initial?: FrictionApp }) {
       {stage === 2 && <StageMessages draft={draft} setDraft={setDraft} />}
 
       {appAlreadyCovered && (
-        <p className="rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
+        <Alert><AlertDescription>
           That app is already covered by another saved entry. Choose a different app to continue.
-        </p>
+        </AlertDescription></Alert>
       )}
 
       {mutations.error && (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <Alert variant="destructive"><AlertDescription>
           {mutations.error.message}
-        </p>
+        </AlertDescription></Alert>
       )}
 
-      <div className="flex items-center justify-between gap-2 pt-2">
-        <button
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <Button
           type="button"
           onClick={() => (stage === 0 ? navigate({ to: "/" }) : setStage((stage - 1) as Stage))}
           disabled={mutations.saving}
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm hover:border-primary disabled:opacity-50"
+          variant="outline"
         >
           {stage === 0 ? "Cancel" : "Back"}
-        </button>
+        </Button>
 
         <div className="flex items-center gap-2">
           {isEdit && stage === 0 && (
-            <button
+            <Button
               type="button"
               onClick={handleDelete}
               disabled={mutations.saving}
-              className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive hover:bg-destructive/20 disabled:opacity-50"
+              variant="destructive"
             >
               Delete
-            </button>
+            </Button>
           )}
           {stage < 2 ? (
-            <button
+            <Button
               type="button"
               disabled={!draft.appId || appAlreadyCovered}
               onClick={() => setStage((stage + 1) as Stage)}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Next →
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
               onClick={save}
               disabled={mutations.saving || appAlreadyCovered}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
               {mutations.saving ? "Saving…" : isEdit ? "Save" : "Create"}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -125,35 +127,15 @@ export function AppForm({ initial }: { initial?: FrictionApp }) {
 }
 
 function Stepper({ stage }: { stage: Stage }) {
-  const items = ["App", "Timing", "Messages"]
-
   return (
-    <ol className="grid grid-cols-3 gap-2 text-[11px] uppercase tracking-widest">
-      {items.map((label, i) => {
-        const active = i === stage
-        return (
-          <li key={label} className="min-w-0">
-            <span
-              className={`flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-center ${
-                active
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border text-muted-foreground"
-              }`}
-            >
-              <span
-                className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground"
-                }`}
-              >
-                {i + 1}
-              </span>
-              <span className="truncate">{label}</span>
-            </span>
-          </li>
-        )
-      })}
+    <ol aria-label="Application setup" className="grid grid-cols-3 gap-2">
+      {["App", "Timing", "Messages"].map((label, i) => (
+        <li key={label} aria-current={i === stage ? "step" : undefined}
+          className={cn("flex min-w-0 flex-col items-center gap-2 rounded-xl border px-1 py-3 text-center text-sm", i === stage ? "border-primary bg-primary/10" : "text-muted-foreground")}>
+          <Badge variant={i === stage ? "default" : "outline"}>{i + 1}</Badge>
+          <span className="max-w-full wrap-anywhere">{label}</span>
+        </li>
+      ))}
     </ol>
   )
 }

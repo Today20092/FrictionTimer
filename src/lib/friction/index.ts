@@ -9,6 +9,7 @@ export {
   updateApp,
   deleteApp,
   getServiceStatus,
+  getSystemTheme,
   openServiceSettings,
   openExternalUrl,
   listInstalledApps,

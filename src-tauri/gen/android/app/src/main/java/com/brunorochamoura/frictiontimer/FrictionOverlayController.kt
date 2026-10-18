@@ -1,6 +1,8 @@
 package com.brunorochamoura.frictiontimer
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.CountDownTimer
 import android.util.Log
@@ -34,6 +36,22 @@ class FrictionOverlayController(
     val messageView = view.findViewById<TextView>(R.id.friction_overlay_message)
     val cancelButton = view.findViewById<Button>(R.id.friction_overlay_cancel)
     val proceedButton = view.findViewById<Button>(R.id.friction_overlay_proceed)
+
+    FrictionTheme.read(context)?.colors?.let { colors ->
+      fun color(name: String) = Color.parseColor(colors.getValue(name))
+      view.findViewById<View>(R.id.friction_overlay_panel).background.mutate()
+        .setTint(color("card"))
+      messageView.setTextColor(color("card-foreground"))
+      cancelButton.backgroundTintList = ColorStateList.valueOf(color("secondary"))
+      cancelButton.setTextColor(color("secondary-foreground"))
+      val states = arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf())
+      proceedButton.backgroundTintList = ColorStateList(
+        states, intArrayOf(color("muted"), color("primary")),
+      )
+      proceedButton.setTextColor(ColorStateList(
+        states, intArrayOf(color("muted-foreground"), color("primary-foreground")),
+      ))
+    }
 
     messageView.text = message
     cancelButton.setOnClickListener { onCancel(config) }

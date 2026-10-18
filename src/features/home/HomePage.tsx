@@ -1,3 +1,4 @@
+import { Separator } from "@/components/ui/separator";
 import { AppHeader } from "@/components/AppHeader";
 import { openExternalUrl, useApps, useServiceStatus } from "@/lib/friction";
 import { AppsSection } from "./apps-section";
@@ -17,14 +18,14 @@ export function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader />
-      <main className="container-app flex-1 py-6 space-y-6">
+      <main className="container-app flex flex-1 flex-col gap-8 py-6">
         <AppsSection
           loading={apps.loading}
           error={apps.error}
           data={apps.data}
         />
 
-        <hr className="border-border" />
+        <Separator />
 
         <PermissionsSection
           loading={services.loading}

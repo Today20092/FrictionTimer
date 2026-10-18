@@ -5,7 +5,7 @@ export type Stage = 0 | 1 | 2
 export const DEFAULT_DRAFT: FrictionAppDraft = {
   appId: "",
   name: "",
-  waitSeconds: 30,
+  waitSeconds: 20,
   durationSeconds: 300,
   messages: ["Do you really need to open this?", "Take a breath."],
 }
@@ -36,7 +36,7 @@ export function sanitizeDraft(draft: FrictionAppDraft): FrictionAppDraft {
   return {
     ...draft,
     waitSeconds: Math.max(1, draft.waitSeconds),
-    durationSeconds: Math.max(1, draft.durationSeconds),
+    durationSeconds: Math.max(0, draft.durationSeconds),
     messages: draft.messages.map((message) => message.trim()).filter(Boolean),
   }
 }

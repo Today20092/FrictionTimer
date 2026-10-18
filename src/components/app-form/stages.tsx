@@ -1,276 +1,156 @@
-import { useState, type Dispatch, type SetStateAction } from "react"
+import { useId, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
+import { Plus, X } from "lucide-react"
 import { InstalledAppRowSkeleton } from "@/components/Skeletons"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useInstalledApps, type FrictionAppDraft } from "@/lib/friction"
 import { hmsToSeconds, secondsToHMS } from "./utils"
 
 type DraftSetter = Dispatch<SetStateAction<FrictionAppDraft>>
 
-export function StageApp({
-  draft,
-  setDraft,
-  isEdit,
-  coveredAppIds,
-  currentAppId,
-}: {
-  draft: FrictionAppDraft
-  setDraft: DraftSetter
-  isEdit: boolean
-  coveredAppIds: Set<string>
-  currentAppId?: string
+export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId }: {
+  draft: FrictionAppDraft; setDraft: DraftSetter; isEdit: boolean
+  coveredAppIds: Set<string>; currentAppId?: string
 }) {
   const [query, setQuery] = useState("")
   const { data: apps, loading, pending, error } = useInstalledApps(query)
-
   return (
-    <div className="space-y-3">
-      <div>
-        <h3 className="text-sm font-semibold">Choose an application</h3>
-        <p className="text-xs text-muted-foreground">
-          {isEdit ? "Change which installed app to limit." : "Pick from apps installed on the device."}
-        </p>
-      </div>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search apps..."
-        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary"
-      />
-      <ul className="h-80 divide-y divide-border overflow-auto rounded-md border border-border">
-        {error && (
-          <li className="px-3 py-4 text-center text-xs text-destructive">{error.message}</li>
-        )}
-        {loading || pending ? (
-          <>
-            <li><InstalledAppRowSkeleton /></li>
-            <li><InstalledAppRowSkeleton /></li>
-            <li><InstalledAppRowSkeleton /></li>
-            <li><InstalledAppRowSkeleton /></li>
-            <li><InstalledAppRowSkeleton /></li>
-          </>
-        ) : apps.length === 0 ? (
-          <li className="px-3 py-4 text-center text-xs text-muted-foreground">No matches.</li>
+    <FieldGroup>
+      <Field>
+        <FieldLabel htmlFor="app-search">Choose an application</FieldLabel>
+        <FieldDescription>{isEdit ? "Change which installed app to limit." : "Pick from apps installed on the device."}</FieldDescription>
+        <Input id="app-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search apps…" />
+      </Field>
+      {error && <Alert variant="destructive"><AlertDescription>{error.message}</AlertDescription></Alert>}
+      <div className="max-h-96 overflow-x-hidden overflow-y-auto rounded-xl border" aria-busy={loading || pending}>
+        {loading || pending ? Array.from({ length: 5 }, (_, i) => <InstalledAppRowSkeleton key={i} />) : apps.length === 0 ? (
+          <Empty><EmptyHeader><EmptyTitle>No apps found</EmptyTitle><EmptyDescription>Try a different search.</EmptyDescription></EmptyHeader></Empty>
         ) : (
-          apps.map((app) => {
-            const selected = draft.appId === app.appId
-            const covered = app.appId !== currentAppId && coveredAppIds.has(app.appId)
-
-            return (
-              <li key={app.appId}>
-                <button
-                  type="button"
-                  disabled={covered}
-                  onClick={() =>
-                    setDraft((current) => ({ ...current, appId: app.appId, name: app.name }))
-                  }
-                  className={`flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed ${
-                    covered
-                      ? "bg-secondary/40 text-muted-foreground opacity-60"
-                      : selected
-                        ? "bg-primary/10"
-                        : "bg-card hover:bg-secondary"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{app.name}</div>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      {app.appId}
-                    </div>
-                  </div>
-                  <div className="ml-2 flex shrink-0 items-center gap-2">
-                    {covered && (
-                      <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                        Added
-                      </span>
-                    )}
-                    <span
-                      className={`h-2.5 w-2.5 rounded-full ${
-                        covered ? "bg-muted-foreground/50" : selected ? "bg-primary" : "bg-border"
-                      }`}
-                    />
-                  </div>
-                </button>
-              </li>
-            )
-          })
+          <RadioGroup aria-label="Installed applications" value={draft.appId} onValueChange={(appId) => {
+            const app = apps.find((item) => item.appId === appId)
+            if (app) setDraft((current) => ({ ...current, appId, name: app.name }))
+          }} className="gap-0">
+            {apps.map((app) => {
+              const covered = app.appId !== currentAppId && coveredAppIds.has(app.appId)
+              return (
+                <label key={app.appId} className="flex min-w-0 cursor-pointer items-center gap-3 border-b p-4 last:border-0 has-[[data-state=checked]]:bg-primary/10 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                  <RadioGroupItem value={app.appId} disabled={covered} aria-label={app.name} />
+                  <span className="flex min-w-0 flex-1 flex-col gap-1 wrap-anywhere">
+                    <span className="text-sm font-medium">{app.name}</span>
+                    <span className="text-xs text-muted-foreground">{app.appId}</span>
+                  </span>
+                  {covered && <Badge variant="secondary">Added</Badge>}
+                </label>
+              )
+            })}
+          </RadioGroup>
         )}
-      </ul>
-    </div>
+      </div>
+    </FieldGroup>
   )
 }
 
-export function StageTime({
-  draft,
-  setDraft,
-}: {
-  draft: FrictionAppDraft
-  setDraft: DraftSetter
-}) {
+export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDraft: DraftSetter }) {
   const wait = secondsToHMS(draft.waitSeconds)
   const duration = secondsToHMS(draft.durationSeconds)
-
+  const [finiteDuration, setFiniteDuration] = useState(draft.durationSeconds || 300)
   return (
-    <div className="space-y-5">
-      <div>
-        <h3 className="text-sm font-semibold">Set timing</h3>
-        <p className="text-xs text-muted-foreground">Minimum one second on each.</p>
-      </div>
-
-      <TimeBlock
-        label="Wait time"
-        hint="How long to wait before the app unlocks."
-        h={wait.h}
-        m={wait.m}
-        s={wait.s}
-        onChange={(h, m, s) =>
-          setDraft((current) => ({
-            ...current,
-            waitSeconds: Math.max(1, hmsToSeconds(h, m, s)),
-          }))
-        }
-      />
-      <TimeBlock
-        label="Duration"
-        hint="How long the app stays unlocked once allowed in."
-        h={duration.h}
-        m={duration.m}
-        s={duration.s}
-        onChange={(h, m, s) =>
-          setDraft((current) => ({
-            ...current,
-            durationSeconds: Math.max(1, hmsToSeconds(h, m, s)),
-          }))
-        }
-      />
-    </div>
+    <FieldGroup>
+      <TimeBlock label="Wait time" hint="Pause before the app unlocks. Minimum one second." {...wait}
+        onChange={(h, m, s) => setDraft((current) => ({ ...current, waitSeconds: Math.max(1, hmsToSeconds(h, m, s)) }))} />
+      <Field orientation="horizontal" className="rounded-xl border p-4">
+        <FieldContent>
+          <FieldLabel htmlFor="unlimited">Unlimited duration</FieldLabel>
+          <FieldDescription id="unlimited-hint">Stay unlocked until you leave the app. You'll wait again when you return.</FieldDescription>
+        </FieldContent>
+        <Switch id="unlimited" aria-describedby="unlimited-hint" checked={draft.durationSeconds === 0} onCheckedChange={(unlimited) => {
+          if (unlimited) setFiniteDuration(draft.durationSeconds)
+          setDraft((current) => ({ ...current, durationSeconds: unlimited ? 0 : finiteDuration }))
+        }} />
+      </Field>
+      {draft.durationSeconds !== 0 && <TimeBlock label="Duration" hint="How long the app stays unlocked. Minimum one second." {...duration}
+        onChange={(h, m, s) => setDraft((current) => ({ ...current, durationSeconds: Math.max(1, hmsToSeconds(h, m, s)) }))} />}
+    </FieldGroup>
   )
 }
 
-function TimeBlock({
-  label,
-  hint,
-  h,
-  m,
-  s,
-  onChange,
-}: {
-  label: string
-  hint: string
-  h: number
-  m: number
-  s: number
+function TimeBlock({ label, hint, h, m, s, onChange }: {
+  label: string; hint: string; h: number; m: number; s: number
   onChange: (h: number, m: number, s: number) => void
 }) {
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-      <div>
-        <div className="text-xs font-bold uppercase tracking-widest text-foreground">
-          {label}
-        </div>
-        <div className="text-[11px] text-muted-foreground">{hint}</div>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <NumberField label="hours" value={h} max={23} onChange={(value) => onChange(value, m, s)} />
-        <NumberField label="minutes" value={m} max={59} onChange={(value) => onChange(h, value, s)} />
-        <NumberField label="seconds" value={s} max={59} onChange={(value) => onChange(h, m, value)} />
-      </div>
-    </div>
+    <FieldSet className="min-w-0 rounded-xl border p-4">
+      <FieldLegend>{label}</FieldLegend>
+      <FieldDescription>{hint}</FieldDescription>
+      <FieldGroup className="grid grid-cols-3 gap-3">
+        <NumberField label="Hours" value={h} max={23} onChange={(value) => onChange(value, m, s)} />
+        <NumberField label="Minutes" value={m} max={59} onChange={(value) => onChange(h, value, s)} />
+        <NumberField label="Seconds" value={s} max={59} onChange={(value) => onChange(h, m, value)} />
+      </FieldGroup>
+    </FieldSet>
   )
 }
 
-function NumberField({
-  label,
-  value,
-  max,
-  onChange,
-}: {
-  label: string
-  value: number
-  max: number
-  onChange: (value: number) => void
-}) {
+function NumberField({ label, value, max, onChange }: { label: string; value: number; max: number; onChange: (value: number) => void }) {
+  const id = useId()
+  const [editing, setEditing] = useState<string | null>(null)
   return (
-    <label className="block">
-      <span className="mb-1 block text-[10px] uppercase tracking-widest text-muted-foreground">
-        {label}
-      </span>
-      <input
-        type="number"
-        inputMode="numeric"
-        min={0}
-        max={max}
-        value={value}
-        onChange={(e) => {
-          const nextValue = Number(e.target.value)
-          if (Number.isNaN(nextValue)) return
-          onChange(Math.max(0, Math.min(max, Math.floor(nextValue))))
-        }}
-        className="w-full rounded-md border border-border bg-background px-2 py-2 text-center font-mono text-lg tabular-nums focus:outline-none focus:border-primary"
-      />
-    </label>
+    <Field className="min-w-0">
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <Input id={id} type="text" inputMode="numeric" pattern="[0-9]*" value={editing ?? String(value)}
+        onFocus={(e) => { setEditing(value === 0 ? "" : String(value)); e.currentTarget.select() }}
+        onBlur={() => setEditing(null)} onChange={(e) => {
+          const text = e.target.value
+          if (!/^\d*$/.test(text)) return
+          setEditing(text)
+          onChange(Math.min(max, Number(text)))
+        }} />
+    </Field>
   )
 }
 
-export function StageMessages({
-  draft,
-  setDraft,
-}: {
-  draft: FrictionAppDraft
-  setDraft: DraftSetter
-}) {
+export function StageMessages({ draft, setDraft }: { draft: FrictionAppDraft; setDraft: DraftSetter }) {
   return (
-    <div className="space-y-3">
-      <div>
-        <h3 className="text-sm font-semibold">Friction messages</h3>
-        <p className="text-xs text-muted-foreground">
-          Shown while the wait timer counts down. Add a few to keep things fresh.
-        </p>
+    <FieldGroup>
+      <div className="flex flex-col gap-1">
+        <h3 className="font-semibold">Friction messages</h3>
+        <p className="text-sm text-muted-foreground">Shown during the countdown. Add a few gentle reminders to rotate through.</p>
       </div>
-
-      <ul className="space-y-2">
-        {draft.messages.map((message, index) => (
-          <li key={index} className="flex items-stretch gap-2">
-            <span className="grid w-8 shrink-0 place-items-center rounded-md border border-border bg-card font-mono text-xs text-muted-foreground">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <input
-              value={message}
-              onChange={(e) => {
-                const nextMessage = e.target.value
-                setDraft((current) => {
-                  const messages = [...current.messages]
-                  messages[index] = nextMessage
-                  return { ...current, messages }
-                })
-              }}
-              placeholder="A gentle nudge..."
-              className="min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:border-primary"
-            />
-            <button
-              type="button"
-              onClick={() =>
-                setDraft((current) => ({
-                  ...current,
-                  messages: current.messages.filter((_, messageIndex) => messageIndex !== index),
-                }))
-              }
-              className="shrink-0 rounded-md border border-border bg-card px-3 text-sm text-muted-foreground hover:border-destructive hover:text-destructive"
-              aria-label="Remove line"
-            >
-              ✕
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <button
-        type="button"
-        onClick={() =>
-          setDraft((current) => ({ ...current, messages: [...current.messages, ""] }))
-        }
-        className="w-full rounded-md border-2 border-dashed border-border px-3 py-2.5 text-sm text-muted-foreground hover:border-primary hover:text-primary"
-      >
-        + Add line
-      </button>
-    </div>
+      {draft.messages.map((message, index) => (
+        <Field key={index}>
+          <div className="flex items-center justify-between gap-2">
+            <FieldLabel htmlFor={`message-${index}`}>Message {index + 1}</FieldLabel>
+            <Button type="button" variant="ghost" size="icon" aria-label={`Remove message ${index + 1}`} onClick={() =>
+              setDraft((current) => ({ ...current, messages: current.messages.filter((_, i) => i !== index) }))
+            }><X /></Button>
+          </div>
+          <MessageField id={`message-${index}`} value={message} onChange={(value) => setDraft((current) => ({
+            ...current, messages: current.messages.map((text, i) => i === index ? value : text),
+          }))} />
+        </Field>
+      ))}
+      <Button type="button" variant="outline" onClick={() => setDraft((current) => ({ ...current, messages: [...current.messages, ""] }))}>
+        <Plus /> Add message
+      </Button>
+    </FieldGroup>
   )
+}
+
+function MessageField({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const element = ref.current
+    if (!element) return
+    element.style.height = "auto"
+    element.style.height = `${element.scrollHeight + 2}px`
+  }, [value])
+  return <Textarea id={id} ref={ref} rows={3} value={value} onChange={(e) => onChange(e.target.value)}
+    placeholder="A gentle nudge…" className="min-w-0 resize-none overflow-hidden wrap-anywhere" />
 }

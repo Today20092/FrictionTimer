@@ -5,7 +5,7 @@ export type FrictionApp = {
   appId: string; // e.g. com.instagram.android
   name: string; // human readable
   waitSeconds: number; // wait before unlock
-  durationSeconds: number; // how long it stays unlocked
+  durationSeconds: number; // 0 = unlocked until leaving the app; otherwise seconds
   messages: string[]; // lines shown during wait
 };
 

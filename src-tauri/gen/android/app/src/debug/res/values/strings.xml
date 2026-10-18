@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Friction Timer Dev</string>
+    <string name="main_activity_title">Friction Timer Dev</string>
+    <string name="accessibility_service_label">Friction Timer Dev</string>
+</resources>

@@ -221,7 +221,7 @@ fn normalize_create_input(input: CreateAppInput) -> Result<FrictionApp, StorageE
     let app_id = validate_required("appId", input.app_id)?;
     let name = validate_required("name", input.name)?;
     let wait_seconds = validate_seconds("waitSeconds", input.wait_seconds)?;
-    let duration_seconds = validate_seconds("durationSeconds", input.duration_seconds)?;
+    let duration_seconds = validate_duration(input.duration_seconds)?;
     let messages = normalize_messages(input.messages);
 
     Ok(FrictionApp {
@@ -248,7 +248,7 @@ fn apply_patch(current: FrictionApp, patch: UpdateAppInput) -> Result<FrictionAp
         None => current.wait_seconds,
     };
     let duration_seconds = match patch.duration_seconds {
-        Some(value) => validate_seconds("durationSeconds", value)?,
+        Some(value) => validate_duration(value)?,
         None => current.duration_seconds,
     };
     let messages = match patch.messages {
@@ -291,6 +291,14 @@ fn normalize_messages(messages: Vec<String>) -> Vec<String> {
         .map(|message| message.trim().to_string())
         .filter(|message| !message.is_empty())
         .collect()
+}
+
+// Zero means an unlimited foreground session, not a persistent unlock.
+fn validate_duration(value: i64) -> Result<i64, StorageError> {
+    if value == 0 {
+        return Ok(0);
+    }
+    validate_seconds("durationSeconds", value)
 }
 
 fn to_sql_error(err: serde_json::Error) -> rusqlite::Error {
@@ -428,7 +436,7 @@ mod tests {
         let duration_error = create_app(
             &db_path,
             CreateAppInput {
-                duration_seconds: 0,
+                duration_seconds: -1,
                 ..sample_input()
             },
         )
@@ -448,6 +456,41 @@ mod tests {
             created.messages,
             vec!["Take a breath.", "Do you need this?"]
         );
+        let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn unlimited_duration_and_multiline_messages_round_trip() {
+        let db_path = temp_db_path("unlimited");
+        let created = create_app(
+            &db_path,
+            CreateAppInput {
+                duration_seconds: 0,
+                messages: vec![" First line\nSecond line ".into()],
+                ..sample_input()
+            },
+        )
+        .unwrap();
+        let fetched = get_app(&db_path, &created.id).unwrap().unwrap();
+        assert_eq!(fetched.duration_seconds, 0);
+        assert_eq!(fetched.messages, vec!["First line\nSecond line"]);
+
+        for duration in [300, 0] {
+            let updated = update_app(
+                &db_path,
+                &created.id,
+                UpdateAppInput {
+                    app_id: None,
+                    name: None,
+                    wait_seconds: None,
+                    duration_seconds: Some(duration),
+                    messages: None,
+                },
+            )
+            .unwrap();
+            assert_eq!(updated.duration_seconds, duration);
+            assert_eq!(get_app(&db_path, &created.id).unwrap().unwrap(), updated);
+        }
         let _ = fs::remove_file(db_path);
     }
 
