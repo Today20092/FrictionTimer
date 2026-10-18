@@ -11,6 +11,7 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.Plugin
 import com.brunorochamoura.frictiontimer.FrictionAccessibilityService
+import com.brunorochamoura.frictiontimer.FrictionReminderNotifications
 
 @InvokeArg
 class OpenSettingsArgs {
@@ -20,6 +21,7 @@ class OpenSettingsArgs {
 data class ServiceStatusResponse(
   val overlay: Boolean,
   val accessibility: Boolean,
+  val notifications: Boolean,
 )
 
 @TauriPlugin
@@ -31,6 +33,7 @@ class PermissionsPlugin(private val activity: Activity) : Plugin(activity) {
         ServiceStatusResponse(
           overlay = Settings.canDrawOverlays(activity),
           accessibility = isAccessibilityServiceEnabled(),
+          notifications = FrictionReminderNotifications.areEnabled(activity),
         ),
       )
     } catch (ex: Exception) {
@@ -48,6 +51,9 @@ class PermissionsPlugin(private val activity: Activity) : Plugin(activity) {
           Uri.parse("package:${activity.packageName}"),
         )
         "accessibility" -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        "notifications" -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+          putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
+        }
         else -> throw IllegalArgumentException("Unknown settings target: ${args.kind}")
       }
 

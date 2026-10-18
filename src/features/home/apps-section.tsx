@@ -38,7 +38,7 @@ export function AppsSection({ loading, error, data }: { loading: boolean; error:
           ))}
         </ul>
       )}
-      <Button asChild><Link to="/app/new"><Plus /> Add application</Link></Button>
+      <Button asChild><Link to="/app/new"><Plus /> Add any app</Link></Button>
     </section>
   )
 }

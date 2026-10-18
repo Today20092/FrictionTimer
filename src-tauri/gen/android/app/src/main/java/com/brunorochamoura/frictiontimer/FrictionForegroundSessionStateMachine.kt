@@ -20,6 +20,11 @@ class FrictionForegroundSessionStateMachine(
     clearPendingExit()
   }
 
+  fun onScreenOff() {
+    unlimitedSessionPackage = null
+    clearPendingExit()
+  }
+
   private var pendingExitPackage: String? = null
   private var pendingExitObservations: Int = 0
 

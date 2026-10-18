@@ -7,6 +7,8 @@ export const DEFAULT_DRAFT: FrictionAppDraft = {
   name: "",
   waitSeconds: 20,
   durationSeconds: 300,
+  reminderEnabled: false,
+  reminderIntervalMinutes: 10,
   messages: ["Do you really need to open this?", "Take a breath."],
 }
 
@@ -29,6 +31,8 @@ export function draftFromApp(app: FrictionApp): FrictionAppDraft {
     waitSeconds: app.waitSeconds,
     durationSeconds: app.durationSeconds,
     messages: [...app.messages],
+    reminderEnabled: app.reminderEnabled,
+    reminderIntervalMinutes: app.reminderIntervalMinutes,
   }
 }
 

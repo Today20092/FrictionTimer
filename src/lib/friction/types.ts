@@ -7,11 +7,14 @@ export type FrictionApp = {
   waitSeconds: number; // wait before unlock
   durationSeconds: number; // 0 = unlocked until leaving the app; otherwise seconds
   messages: string[]; // lines shown during wait
+  reminderEnabled: boolean;
+  reminderIntervalMinutes: number;
 };
 
 export type ServiceStatus = {
   overlay: boolean;
   accessibility: boolean;
+  notifications: boolean;
 };
 
 export type ServicePermissionKey = keyof ServiceStatus;

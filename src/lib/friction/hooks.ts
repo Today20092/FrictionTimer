@@ -123,7 +123,7 @@ export function useServiceStatus() {
   const [actionError, setActionError] = useState<Error | null>(null);
   const state = useAsync<ServiceStatus>(
     () => api.getServiceStatus(),
-    { overlay: false, accessibility: false },
+    { overlay: false, accessibility: false, notifications: false },
     [],
   );
 

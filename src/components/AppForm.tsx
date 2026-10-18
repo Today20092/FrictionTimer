@@ -13,7 +13,7 @@ import {
   type Stage,
 } from "./app-form/utils"
 
-export function AppForm({ initial }: { initial?: FrictionApp }) {
+export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; suggestedAppId?: string }) {
   const navigate = useNavigate()
   const { data: existingApps } = useApps()
   const mutations = useAppMutations()
@@ -29,9 +29,10 @@ export function AppForm({ initial }: { initial?: FrictionApp }) {
       .map((app) => app.appId),
   )
   const appAlreadyCovered = draft.appId !== initial?.appId && coveredAppIds.has(draft.appId)
+  const reminderInvalid = !Number.isInteger(draft.reminderIntervalMinutes) || draft.reminderIntervalMinutes < 1 || draft.reminderIntervalMinutes > 2147483647
 
   async function save() {
-    if (!draft.appId || appAlreadyCovered || mutations.saving) return
+    if (!draft.appId || appAlreadyCovered || reminderInvalid || mutations.saving) return
     const clean = sanitizeDraft(draft)
 
     try {
@@ -65,6 +66,7 @@ export function AppForm({ initial }: { initial?: FrictionApp }) {
           isEdit={isEdit}
           coveredAppIds={coveredAppIds}
           currentAppId={initial?.appId}
+          suggestedAppId={suggestedAppId}
         />
       )}
       {stage === 1 && <StageTime draft={draft} setDraft={setDraft} />}
@@ -75,6 +77,9 @@ export function AppForm({ initial }: { initial?: FrictionApp }) {
           That app is already covered by another saved entry. Choose a different app to continue.
         </AlertDescription></Alert>
       )}
+      {reminderInvalid && <Alert variant="destructive"><AlertDescription>
+        Enter a whole number from 1 to 2,147,483,647 minutes for session reminders.
+      </AlertDescription></Alert>}
 
       {mutations.error && (
         <Alert variant="destructive"><AlertDescription>
@@ -106,7 +111,7 @@ export function AppForm({ initial }: { initial?: FrictionApp }) {
           {stage < 2 ? (
             <Button
               type="button"
-              disabled={!draft.appId || appAlreadyCovered}
+              disabled={!draft.appId || appAlreadyCovered || reminderInvalid}
               onClick={() => setStage((stage + 1) as Stage)}
             >
               Next →
@@ -115,7 +120,7 @@ export function AppForm({ initial }: { initial?: FrictionApp }) {
             <Button
               type="button"
               onClick={save}
-              disabled={mutations.saving || appAlreadyCovered}
+              disabled={mutations.saving || appAlreadyCovered || reminderInvalid}
             >
               {mutations.saving ? "Saving…" : isEdit ? "Save" : "Create"}
             </Button>

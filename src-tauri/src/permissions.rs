@@ -15,12 +15,14 @@ const PLUGIN_IDENTIFIER: &str = "com.brunorochamoura.frictiontimer.permissions";
 pub enum ServicePermissionKind {
     Overlay,
     Accessibility,
+    Notifications,
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct ServiceStatus {
     pub overlay: bool,
     pub accessibility: bool,
+    pub notifications: bool,
 }
 
 pub struct PermissionsBridge<R: Runtime> {
@@ -44,6 +46,7 @@ impl<R: Runtime> PermissionsBridge<R> {
             Ok(ServiceStatus {
                 overlay: true,
                 accessibility: true,
+                notifications: true,
             })
         }
     }
