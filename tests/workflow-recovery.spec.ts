@@ -91,6 +91,27 @@ test("settings-launch errors preserve checked permissions and can be retried", a
   await expect(page.getByRole("button", { name: "Accessibility service Enabled" })).toBeVisible();
 });
 
+test("a failed navigation to another app never leaves the previous app editable", async ({ page }) => {
+  const native = await mockNativeBridge(page);
+  native.apps.push({ ...savedApp, id: "other-app", appId: "com.example.notes", name: "Notes" });
+  await page.goto("/app/saved-app");
+  await expect(page.getByRole("button", { name: "Delete", exact: true })).toBeVisible();
+  native.failures.add("get_app");
+  native.delay = 400;
+  await page.evaluate(() => {
+    history.pushState(null, "", "/app/other-app");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await expect(page.getByRole("button", { name: "Delete", exact: true })).not.toBeVisible();
+  const failure = page.getByRole("alert").filter({ hasText: "Couldn't load app:" });
+  await expect(failure).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete", exact: true })).not.toBeVisible();
+  native.failures.delete("get_app");
+  await failure.getByRole("button", { name: "Retry" }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page.getByRole("alertdialog", { name: "Remove the pause for Notes?" })).toBeVisible();
+});
+
 test("failed saves keep the draft and do not masquerade as deletion failures", async ({ page }) => {
   const native = await mockNativeBridge(page);
   await page.goto("/app/saved-app");
