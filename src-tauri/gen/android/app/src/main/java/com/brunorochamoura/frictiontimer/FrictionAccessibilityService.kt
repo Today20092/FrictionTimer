@@ -38,11 +38,14 @@ class FrictionAccessibilityService : AccessibilityService() {
       val config = configRepository.findByAppId(appId)
       val screenOn = getSystemService(PowerManager::class.java).isInteractive
       val foreground = resolveForegroundPackage(null)
-      if (!screenOn || config?.reminderEnabled != true || (foreground != null && foreground != appId)) {
+      val nowMs = SystemClock.elapsedRealtime()
+      if (!screenOn || config?.reminderEnabled != true ||
+        !reminderSession.observeForeground(foreground, hasTransientSystemWindow(), nowMs)
+      ) {
         stopReminder()
         return
       }
-      reminderSession.reminderMinutes(SystemClock.elapsedRealtime(), config.reminderIntervalMinutes)
+      reminderSession.reminderMinutes(nowMs, config.reminderIntervalMinutes)
         ?.let { reminderNotifications.show(config.name, it) }
       mainHandler.postDelayed(this, 1_000L)
     }
@@ -141,7 +144,9 @@ class FrictionAccessibilityService : AccessibilityService() {
   private fun processForegroundPackage(packageHint: String?) {
     if (!getSystemService(PowerManager::class.java).isInteractive) return
     val resolvedPackage = resolveForegroundPackage(packageHint)
-    if (resolvedPackage != null && reminderSession.appId != null && reminderSession.appId != resolvedPackage) {
+    if (reminderSession.appId != null && !reminderSession.observeForeground(
+        resolvedPackage, hasTransientSystemWindow(), SystemClock.elapsedRealtime(),
+      )) {
       stopReminder()
     }
     debugLog {
@@ -158,7 +163,9 @@ class FrictionAccessibilityService : AccessibilityService() {
       scheduleForegroundProcessing(null)
     }
 
-    maybeShowOverlayFor(transition.packageToEvaluateForOverlay)
+    maybeShowOverlayFor(transition.packageToEvaluateForOverlay ?: resolvedPackage?.takeIf {
+      it == foregroundSessionState.unlimitedSessionPackage
+    })
   }
 
   private fun maybeShowOverlayFor(packageName: String?) {
@@ -263,6 +270,14 @@ class FrictionAccessibilityService : AccessibilityService() {
 
   private fun isTransientSystemPackage(packageName: String): Boolean {
     return packageName == "android" || packageName == "com.android.systemui"
+  }
+
+  private fun hasTransientSystemWindow(): Boolean {
+    if (isTransientSystemPackage(rootInActiveWindow?.packageName?.toString().orEmpty())) return true
+    return windows.any { window ->
+      (window.isActive || window.isFocused) &&
+        isTransientSystemPackage(window.root?.packageName?.toString().orEmpty())
+    }
   }
 
   private fun dismissOverlay(reason: String) {
