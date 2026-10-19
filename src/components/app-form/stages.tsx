@@ -81,9 +81,9 @@ export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDra
   const [finiteDuration, setFiniteDuration] = useState(draft.durationSeconds || 300)
   return (
     <FieldGroup className="gap-2">
-      <TimeBlock label="Wait time" hint="Pause before opening. Minimum one second." {...wait}
+      <TimeBlock label="Wait time" hint="Wait before opening (1s minimum)." {...wait}
         onChange={(h, m, s) => setDraft((current) => ({ ...current, waitSeconds: hmsToSeconds(h, m, s) }))} />
-      <Field orientation="horizontal" className="relative rounded-xl border p-3">
+      <Field orientation="horizontal" className="relative rounded-xl border px-3 py-2">
         <FieldContent>
           <FieldLabel htmlFor="unlimited">Unlimited duration</FieldLabel>
           <FieldDescription id="unlimited-hint">Unlocked until you leave the app.</FieldDescription>
@@ -93,9 +93,9 @@ export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDra
           setDraft((current) => ({ ...current, durationSeconds: unlimited ? 0 : finiteDuration }))
         }} />
       </Field>
-      {draft.durationSeconds !== 0 && <TimeBlock label="Duration" hint="Time unlocked. Minimum one second." {...duration}
+      {draft.durationSeconds !== 0 && <TimeBlock label="Duration" hint="Time unlocked (1s minimum)." {...duration}
         onChange={(h, m, s) => setDraft((current) => ({ ...current, durationSeconds: hmsToSeconds(h, m, s) }))} />}
-      <Field orientation="horizontal" className="relative rounded-xl border p-3">
+      <Field orientation="horizontal" className="relative rounded-xl border px-3 py-2">
         <FieldContent>
           <FieldLabel htmlFor="session-reminders">Session reminders</FieldLabel>
           <FieldDescription id="session-reminders-hint">Quiet nudges during each visit.</FieldDescription>
@@ -150,7 +150,7 @@ function TimeBlock({ label, hint, h, m, s, onChange }: {
   }
 
   return (
-    <FieldSet className="min-w-0 gap-2 rounded-xl border p-3">
+    <FieldSet className="min-w-0 gap-2 rounded-xl border px-3 py-2">
       <FieldLegend className="mb-1">{label}</FieldLegend>
       <FieldDescription>{hint}</FieldDescription>
       <FieldGroup className="grid grid-cols-3 gap-2">
