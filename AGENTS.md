@@ -54,3 +54,17 @@ For service/overlay changes, also exercise a configured app on a device or emula
 There is currently no frontend test runner, lint script, checked-in CI workflow, or pre-commit configuration. Use the existing build/type check and focused manual UI checks; do not report nonexistent checks as passing. Follow neighboring source formatting and the Android `.editorconfig` rather than reformatting unrelated files.
 
 Completion: review the diff for unintended generated files and user-data/signing artifacts; report checks run, failures, and device/environment checks that remain unverified. No repository-specific commit or PR template is currently configured.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Use a single-context layout with a root `GLOSSARY.md` and `docs/adr/`. See `docs/agents/domain.md`.
