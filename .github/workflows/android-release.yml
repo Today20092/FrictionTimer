@@ -83,6 +83,10 @@ jobs:
           PY
       - name: Build signed APK
         run: pnpm tauri android build --target aarch64 --apk
+      - name: Check optimized theme bridge
+        run: |
+          unzip -p src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk classes.dex > "$RUNNER_TEMP/theme-bridge.dex"
+          node scripts/check-theme-bridge.mjs "$RUNNER_TEMP/theme-bridge.dex"
       - name: Check Android session and overlay logic
         working-directory: src-tauri/gen/android
         run: ./gradlew :app:testArmDebugUnitTest
