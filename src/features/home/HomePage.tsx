@@ -4,12 +4,15 @@ import { openExternalUrl, useApps, useInstalledApps, useServiceStatus } from "@/
 import { recommendedApps } from "@/lib/friction/recommendations";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { AppsSection } from "./apps-section";
+import { DefaultsManager } from "./defaults-manager";
 import { PermissionsSection } from "./permissions-section";
 
 const REPOSITORY_URL = "https://github.com/Today20092/FrictionTimer";
 
 export function HomePage() {
+  const [manageDefaults, setManageDefaults] = useState(false);
   const apps = useApps();
   const services = useServiceStatus();
   const installed = useInstalledApps("");
@@ -27,6 +30,7 @@ export function HomePage() {
     <div className="flex min-h-dvh flex-col">
       <AppHeader />
       <main className="container-app flex flex-1 flex-col gap-5 py-4">
+        {manageDefaults ? <DefaultsManager onBack={() => setManageDefaults(false)} /> : <>
         {recommendations.length > 0 && <section className="flex min-w-0 flex-col gap-2">
           <h2 className="text-lg font-semibold">Recommended apps</h2>
           <p className="text-sm text-muted-foreground">Add a pause before opening a feed.</p>
@@ -38,6 +42,7 @@ export function HomePage() {
             </li>)}
           </ul>
         </section>}
+        <Button type="button" variant="outline" className="self-start" onClick={() => setManageDefaults(true)}>Manage defaults</Button>
         <AppsSection
           loading={apps.loading}
           error={apps.error}
@@ -56,6 +61,7 @@ export function HomePage() {
             onRetry={services.refresh}
             onOpenSettings={services.openSettings}
           />
+        </>}
         </>}
       </main>
       <footer className="container-app py-3 text-center text-sm text-muted-foreground">

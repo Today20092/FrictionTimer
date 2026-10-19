@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "./api";
 import type {
   FrictionApp,
+  FrictionAppDefaults,
   FrictionAppDraft,
   InstalledApp,
   ServicePermissionKey,
@@ -70,6 +71,12 @@ export function useApps() {
 
   useEffect(() => api.subscribe(state.refresh), [state.refresh]);
 
+  return state;
+}
+
+export function useAppDefaults() {
+  const state = useAsync<FrictionAppDefaults>(() => api.getAppDefaults(), {}, []);
+  useEffect(() => api.subscribe(state.refresh), [state.refresh]);
   return state;
 }
 

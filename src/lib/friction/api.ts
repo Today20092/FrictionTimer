@@ -7,6 +7,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   FrictionApp,
+    FrictionAppDefaults,
   FrictionAppDraft,
   InstalledApp,
   ServicePermissionKey,
@@ -68,6 +69,22 @@ export async function updateApp(
 export async function deleteApp(id: string): Promise<void> {
   await invoke("delete_app", { id });
   emitChange("apps");
+}
+
+export async function getAppDefaults(): Promise<FrictionAppDefaults> {
+  return invoke<FrictionAppDefaults>("get_app_defaults");
+}
+
+export async function setAppDefaults(defaults: FrictionAppDefaults): Promise<FrictionAppDefaults> {
+  const saved = await invoke<FrictionAppDefaults>("set_app_defaults", { defaults });
+  emitChange("defaults");
+  return saved;
+}
+
+export async function applyAppDefaults(appIds: string[], defaults: FrictionAppDefaults): Promise<number> {
+  const count = await invoke<number>("apply_app_defaults", { input: { appIds, defaults } });
+  emitChange("apps");
+  return count;
 }
 
 // ---------- Service status (overlay / accessibility permissions) ----------

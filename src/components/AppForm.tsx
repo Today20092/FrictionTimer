@@ -3,12 +3,13 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { cn } from "cn"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { useApps, useAppMutations, type FrictionApp, type FrictionAppDraft } from "@/lib/friction"
+import { useApps, useAppDefaults, useAppMutations, type FrictionApp, type FrictionAppDraft } from "@/lib/friction"
 import { StageApp, StageMessages, StageTime } from "./app-form/stages"
 import {
   DEFAULT_DRAFT,
+  applyDefaultsToDraft,
   draftFromApp,
   sanitizeDraft,
   type Stage,
@@ -17,6 +18,7 @@ import {
 export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; suggestedAppId?: string }) {
   const navigate = useNavigate()
   const { data: existingApps } = useApps()
+  const defaults = useAppDefaults()
   const mutations = useAppMutations()
   const isEdit = !!initial
 
@@ -25,6 +27,12 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
   const [draft, setDraft] = useState<FrictionAppDraft>(() =>
     initial ? draftFromApp(initial) : DEFAULT_DRAFT,
   )
+  const defaultsApplied = useRef(false)
+  useEffect(() => {
+    if (initial || defaults.loading || defaultsApplied.current) return
+    defaultsApplied.current = true
+    setDraft(current => applyDefaultsToDraft(current, defaults.data))
+  }, [defaults.data, defaults.loading, initial])
   const coveredAppIds = new Set(
     existingApps
       .filter((app) => app.id !== initial?.id)
@@ -34,7 +42,7 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
   const reminderInvalid = !Number.isInteger(draft.reminderIntervalMinutes) || draft.reminderIntervalMinutes < 1 || draft.reminderIntervalMinutes > 2147483647
 
   async function save() {
-    if (!draft.appId || appAlreadyCovered || reminderInvalid || mutations.saving) return
+    if (!draft.appId || appAlreadyCovered || reminderInvalid || mutations.saving || (!initial && (defaults.loading || defaults.error))) return
     const clean = sanitizeDraft(draft)
 
     try {
@@ -60,7 +68,7 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
   return (
     <form className="flex min-h-0 min-w-0 flex-1 flex-col gap-3" onSubmit={(event) => {
       event.preventDefault()
-      if (!draft.appId || appAlreadyCovered || (stage !== 0 && reminderInvalid) || mutations.saving) return
+      if (!draft.appId || appAlreadyCovered || (stage !== 0 && reminderInvalid) || mutations.saving || (!initial && (defaults.loading || defaults.error))) return
       if (stage < 2) setStage((stage + 1) as Stage)
       else void save()
     }}>
@@ -87,6 +95,10 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
             That app is already covered by another saved entry. Choose a different app to continue.
           </AlertDescription></Alert>
         )}
+        {!initial && defaults.error && <Alert variant="destructive"><AlertDescription>
+          Couldn't load app defaults: {defaults.error.message}
+          <Button type="button" variant="outline" onClick={defaults.refresh}>Retry</Button>
+        </AlertDescription></Alert>}
         {reminderInvalid && <Alert variant="destructive"><AlertDescription>
           Enter a whole number from 1 to 2,147,483,647 minutes for session reminders.
         </AlertDescription></Alert>}
@@ -143,14 +155,14 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
           {stage < 2 ? (
             <Button
               type="submit"
-              disabled={!draft.appId || appAlreadyCovered || (stage === 1 && reminderInvalid)}
+              disabled={!draft.appId || appAlreadyCovered || (stage === 1 && reminderInvalid) || (!initial && (defaults.loading || !!defaults.error))}
             >
               Next →
             </Button>
           ) : (
             <Button
               type="submit"
-              disabled={mutations.saving || appAlreadyCovered || reminderInvalid}
+              disabled={mutations.saving || appAlreadyCovered || reminderInvalid || (!initial && (defaults.loading || !!defaults.error))}
             >
               {mutations.saving ? "Saving…" : isEdit ? "Save" : "Create"}
             </Button>

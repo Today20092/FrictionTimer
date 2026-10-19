@@ -25,3 +25,10 @@ export type InstalledApp = {
 };
 
 export type FrictionAppDraft = Omit<FrictionApp, "id">;
+
+export type FrictionAppDefaults = {
+  waitSeconds?: number;
+  durationSeconds?: number;
+  messages?: string[];
+  sessionReminders?: { enabled: boolean; intervalMinutes: number };
+};
