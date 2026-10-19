@@ -1,15 +1,19 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { join } from "node:path";
 
-// Check R8's output: source-level tests cannot catch renamed JSON fields.
-const mapping = readFileSync(process.argv[2], "utf8");
-const response = "com.brunorochamoura.frictiontimer.SystemThemeResponse";
-const block = mapping.split(/\r?\n(?=[^\s#])/).find(line => line.startsWith(`${response} -> `));
-assert.ok(block, "Theme response is missing from the release mapping");
-assert.ok(block.startsWith(`${response} -> ${response}:`), "Theme response class was renamed");
-for (const [type, field] of [["boolean", "dark"], ["java.util.Map", "colors"]]) {
+// Inspect compiled fields: source tests and R8 mappings cannot prove they survived.
+assert.ok(process.env.ANDROID_HOME, "ANDROID_HOME must point to the Android SDK");
+assert.ok(process.argv[2], "Pass the APK's extracted classes.dex");
+const dexdump = join(process.env.ANDROID_HOME, "build-tools", "36.0.0", process.platform === "win32" ? "dexdump.exe" : "dexdump");
+const dump = execFileSync(dexdump, [process.argv[2]], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+const response = "'Lcom/brunorochamoura/frictiontimer/SystemThemeResponse;'";
+const block = dump.split(/Class descriptor\s*:/).find(section => section.trimStart().startsWith(response));
+assert.ok(block, "Theme response is missing from the release bytecode");
+const fields = block.split("Direct methods")[0];
+for (const [type, field] of [["Z", "dark"], ["Ljava/util/Map;", "colors"]]) {
   assert.ok(
-    block.split(/\r?\n/).some(line => line.trim() === `${type} ${field} -> ${field}`),
+    new RegExp(`name\\s*:\\s*'${field}'\\s+type\\s*:\\s*'${type}'`).test(fields),
     `Theme response field ${field} was removed or renamed; Rust cannot read the palette`,
   );
 }
