@@ -2,7 +2,7 @@
 
 The [Android release workflow](../.github/workflows/android-release.yml) builds an ARM64 APK on tag pushes matching `v*`. A manual run builds and uploads an artifact without publishing a release.
 
-Before publishing, it checks frontend behavior, Rust formatting/tests, Android JVM tests, version alignment, and the APK signature. A successful tag build uploads the APK and its SHA-256 checksum with the matching version's release notes.
+Before publishing, it checks frontend behavior, Rust formatting/tests, Android JVM tests, version alignment, the optimized theme bridge fields, and the APK signature. A successful tag build uploads the APK and its SHA-256 checksum with the matching version's release notes.
 
 ## Signing setup
 

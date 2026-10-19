@@ -29,6 +29,8 @@
 -keep class com.brunorochamoura.frictiontimer.installedapps.InstalledAppsPlugin { *; }
 -keep class com.brunorochamoura.frictiontimer.installedapps.InstalledAppResponse { *; }
 
+-keep class com.brunorochamoura.frictiontimer.SystemThemeResponse { *; }
+
 # The accessibility service is referenced by Android framework registration
 # and also checked through Settings.Secure at runtime.
 -keep class com.brunorochamoura.frictiontimer.FrictionAccessibilityService { *; }
