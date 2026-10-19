@@ -1,6 +1,33 @@
 import { expect, test } from "@playwright/test";
 import { mockNativeBridge } from "./native-bridge";
 
+test("recommended and edited apps scroll into view after the inventory loads", async ({ page }) => {
+  const native = await mockNativeBridge(page);
+  native.installed.unshift(...Array.from({ length: 40 }, (_, index) => ({
+    appId: `com.example.app${index}`, name: `App ${index}`,
+  })));
+  native.installed.push({ appId: "com.facebook.katana", name: "Facebook" });
+  native.delay = 100;
+  await page.goto("/");
+  await page.getByRole("link", { name: "Facebook", exact: true }).click();
+  const facebook = page.getByRole("radio", { name: "Facebook", exact: true });
+  await expect(facebook).toBeChecked();
+  await expect(facebook).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("button", { name: "Next" })).toBeInViewport({ ratio: 1 });
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await expect(facebook).toBeInViewport({ ratio: 1 });
+
+  await page.goto("/app/saved-app");
+  const reader = page.getByRole("radio", { name: "Reader", exact: true });
+  await expect(reader).toBeChecked();
+  await expect(reader).toBeInViewport({ ratio: 1 });
+  const list = reader.locator("xpath=ancestor::div[@aria-busy][1]");
+  await list.evaluate(element => { element.scrollTop = 0; });
+  await expect(reader).not.toBeInViewport();
+});
+
 test("recommended setup preserves timing validation and saves optional reminders", async ({ page }) => {
   const native = await mockNativeBridge(page);
   await page.goto("/");

@@ -22,6 +22,7 @@ export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId,
   const [query, setQuery] = useState("")
   const { data: apps, loading, pending, error, refresh } = useInstalledApps(query)
   const selectedSuggestion = useRef(false)
+  const selectedApp = useRef<HTMLLabelElement>(null)
   useEffect(() => {
     if (selectedSuggestion.current || !suggestedAppId || loading || pending) return
     const app = apps.find(app => app.appId === suggestedAppId)
@@ -30,6 +31,9 @@ export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId,
       setDraft(current => current.appId ? current : { ...current, appId: app.appId, name: app.name })
     }
   }, [apps, loading, pending, suggestedAppId, setDraft])
+  useLayoutEffect(() => {
+    if (!loading && !pending) selectedApp.current?.scrollIntoView({ block: "nearest", inline: "nearest" })
+  }, [apps, loading, pending, draft.appId])
   return (
     <FieldGroup className="h-full min-h-0 gap-3">
       <Field className="shrink-0 gap-2">
@@ -52,7 +56,7 @@ export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId,
             {apps.map((app) => {
               const covered = app.appId !== currentAppId && coveredAppIds.has(app.appId)
               return (
-                <label key={app.appId} className="relative flex min-w-0 cursor-pointer items-center gap-3 border-b px-3 py-2.5 last:border-0 has-[[data-state=checked]]:bg-primary/10 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                <label key={app.appId} ref={app.appId === draft.appId ? selectedApp : undefined} className="relative flex min-w-0 cursor-pointer items-center gap-3 border-b px-3 py-2.5 last:border-0 has-[[data-state=checked]]:bg-primary/10 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
                   <RadioGroupItem value={app.appId} disabled={covered} aria-label={app.name} />
                   <span className="flex min-w-0 flex-1 flex-col gap-1 wrap-anywhere">
                     <span className="text-sm font-medium">{app.name}</span>
