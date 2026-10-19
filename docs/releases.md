@@ -28,6 +28,8 @@ On Windows, use forward slashes in the path. See [Tauri's Android signing docume
 
 ## Publish a version
 
+Every app update intended for distribution gets a new semantic version and a published GitHub Release. Use a patch version for fixes, a minor version for new features, and a major version for incompatible changes. Do not distribute source updates through a manual Actions run alone.
+
 1. Update versions in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/Cargo.lock`. The header reads the package version.
 2. Write `docs/releases/vX.Y.Z.md`.
 3. Commit and push to main. Optionally run the workflow manually first.
@@ -38,7 +40,7 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-Only tag runs publish. Failed checks leave no published release. Rerunning a tag replaces matching assets. Use a new version/tag for source changes.
+Only tag runs publish. Each release uploads `FrictionTimer-arm64.apk`, which keeps the README's latest-download URL stable, plus its checksum. Failed checks leave no published release. Rerunning a tag replaces matching assets. Use a new version/tag for source changes.
 
 ## Compatibility
 
