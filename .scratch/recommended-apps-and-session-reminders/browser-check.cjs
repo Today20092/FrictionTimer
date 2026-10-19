@@ -1,0 +1,55 @@
+const { chromium } = require('C:/Users/User/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert = require('node:assert/strict');
+(async () => {
+  const browser = await chromium.launch({headless:true,channel:'msedge'});
+  const page = await browser.newPage({viewport:{width:390,height:844}});
+  const errors=[];
+  page.on('pageerror', error=>errors.push(error.message));
+  await page.addInitScript(() => {
+    window.savedApps=[];
+    window.__TAURI_INTERNALS__={invoke:async(command,args)=>{
+      if(command==='get_system_theme') return null;
+      if(command==='list_apps') return window.savedApps;
+      if(command==='list_installed_apps') return [{appId:'com.instagram.android',name:'Instagram'},{appId:'com.google.android.youtube',name:'YouTube'},{appId:'org.example.camera',name:'Camera'}].filter(app=>!args.query||app.name.toLowerCase().includes(args.query.toLowerCase()));
+      if(command==='get_service_status') return {overlay:true,accessibility:true,notifications:false};
+      if(command==='create_app') { const app={...args.input,id:'saved-1'}; window.savedApps.push(app);return app; }
+      return null;
+    }};
+  });
+  await page.goto('http://127.0.0.1:1420/');
+  await page.getByRole('heading',{name:'Recommended apps'}).waitFor();
+  await page.screenshot({path:'C:/Users/User/Documents/FrictionTimer/.scratch/recommended-apps-and-session-reminders/home-mobile.png',fullPage:true});
+  await page.getByRole('link',{name:'Instagram',exact:true}).click();
+  await page.getByRole('radio',{name:'Instagram',exact:true}).waitFor();
+  assert.equal(await page.getByRole('radio',{name:'Instagram',exact:true}).getAttribute('aria-checked'),'true');
+  await page.getByRole('button',{name:'Next →'}).click();
+  const toggle=page.getByRole('switch',{name:'Session reminders',exact:true});
+  assert.equal(await toggle.getAttribute('aria-checked'),'false');
+  await toggle.click();
+  const minutes=page.getByLabel('Remind me every (minutes)',{exact:true});
+  assert.equal(await minutes.inputValue(),'10');
+  await page.getByRole('button',{name:'Enable notifications'}).waitFor();
+  await minutes.fill('');
+  assert.equal(await page.getByRole('button',{name:'Next →'}).isDisabled(),true);
+  await toggle.click();
+  assert.equal(await page.getByRole('button',{name:'Next →'}).isEnabled(),true);
+  await toggle.click();
+  assert.equal(await minutes.inputValue(),'10');
+  await minutes.fill('2');
+  await page.screenshot({path:'C:/Users/User/Documents/FrictionTimer/.scratch/recommended-apps-and-session-reminders/reminders-mobile.png',fullPage:true});
+  await page.getByRole('button',{name:'Next →'}).click();
+  await page.getByRole('button',{name:'Create',exact:true}).click();
+  await page.getByRole('heading',{name:'Your limited apps'}).waitFor();
+  assert.equal(await page.getByRole('link',{name:'Instagram',exact:true}).count(),0);
+  assert.equal(await page.getByRole('link',{name:'YouTube',exact:true}).count(),1);
+  await page.getByRole('link',{name:'Add any app'}).click();
+  await page.getByRole('radio',{name:'Camera',exact:true}).click();
+  await page.getByRole('button',{name:'Next →'}).click();
+  assert.equal(await page.getByRole('switch',{name:'Session reminders',exact:true}).getAttribute('aria-checked'),'false');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.setViewportSize({width:1280,height:900});
+  await page.screenshot({path:'C:/Users/User/Documents/FrictionTimer/.scratch/recommended-apps-and-session-reminders/reminders-desktop.png',fullPage:true});
+  assert.deepEqual(errors,[]);
+  console.log('PASS: recommendations -> selected setup; reminders default off/10; permission recovery; blank interval disables Next; disabling recovers; save filters recommendation; Add any app; narrow no overflow; no page errors.');
+  await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});
