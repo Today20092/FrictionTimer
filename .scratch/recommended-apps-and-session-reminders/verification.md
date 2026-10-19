@@ -47,3 +47,11 @@ UIAutomator dumps temporarily suppress accessibility services on this device. Ru
 Screen-off timing, unknown/transient foreground behavior, and configuration removal are covered by focused logic tests and code review. A complete device matrix for screen-off/re-entry, service interruption, cooldown expiry, and permission revocation during an active reminder was not exercised. The Android 7 settings fallback was statically reviewed, not tested on Android 7 hardware.
 
 Recommendations match explicit package IDs. Repackaged or custom variants need a package-list update; disabled apps follow existing installed-app discovery behavior. No usage history or analytics were added.
+
+## Combined APK update
+
+At the user's request, merge `80de684` combined workflow improvements `9cc3697` and `ad74278` with recommendations and reminders. Both commits were verified as ancestors of the combined build. Editor conflicts were resolved to retain delete confirmation, retry recovery, native form validation, app identity, recommendation preselection, and reminder settings. Integration checks also cover saving and reopening reminders and notification-settings error recovery.
+
+The combined frontend build, recommendation assertions, and all 12 Playwright tests passed. No Android or Rust runtime code changed in this merge. A new aarch64 debug APK built successfully and installed on the connected phone using `adb install -r`.
+
+The installed APK's SHA-256 matched the newly built APK. Before and after the update, a fingerprint of the complete saved configurations matched, with one existing entry preserved. Native overlay and accessibility status remained enabled. Temporary debug port forwarding was removed after verification.
