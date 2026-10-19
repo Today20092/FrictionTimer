@@ -90,9 +90,8 @@ jobs:
         run: |
           APK=src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
-          VERSION=$(node -p "require('./package.json').version")
           mkdir -p release-assets
-          cp "$APK" "release-assets/FrictionTimer-v$VERSION-arm64.apk"
+          cp "$APK" "release-assets/FrictionTimer-arm64.apk"
           cd release-assets
           sha256sum *.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v7.0.2
