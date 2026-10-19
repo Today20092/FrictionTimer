@@ -18,7 +18,7 @@ Recommended apps are installed feed apps you have not configured yet. The list c
 
 Tap a recommendation to open setup. Its row is selected and brought into view. Nothing starts blocking until you save. If no recommendations apply, the section is hidden.
 
-Choose the waiting time, session duration, and messages. A finite session lets you return without another wait until it expires; an unlimited session does not expire while the runtime retains that session. The editor keeps Cancel/Next/Save reachable, with scrolling inside long lists or content when necessary.
+Choose the waiting time, session duration, and messages. A finite duration sets how long the app stays unlocked; unlimited duration keeps it unlocked until you leave the app. The editor keeps Cancel/Next/Save reachable, with scrolling inside long lists or content when necessary.
 
 ## Session reminders
 
