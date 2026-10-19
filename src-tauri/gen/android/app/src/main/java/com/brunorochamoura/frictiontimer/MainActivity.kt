@@ -6,9 +6,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import com.google.android.material.color.DynamicColors
 
 class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
+    DynamicColors.applyToActivityIfAvailable(this)
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
 
