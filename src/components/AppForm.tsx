@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { cn } from "cn"
 import { useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
@@ -20,6 +21,7 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
   const isEdit = !!initial
 
   const [stage, setStage] = useState<Stage>(0)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [draft, setDraft] = useState<FrictionAppDraft>(() =>
     initial ? draftFromApp(initial) : DEFAULT_DRAFT,
   )
@@ -56,7 +58,12 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <form className="flex min-w-0 flex-col gap-6" onSubmit={(event) => {
+      event.preventDefault()
+      if (!draft.appId || appAlreadyCovered || (stage !== 0 && reminderInvalid) || mutations.saving) return
+      if (stage < 2) setStage((stage + 1) as Stage)
+      else void save()
+    }}>
       <Stepper stage={stage} />
 
       {stage === 0 && (
@@ -69,7 +76,9 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
           suggestedAppId={suggestedAppId}
         />
       )}
-      {stage === 1 && <StageTime draft={draft} setDraft={setDraft} />}
+      <fieldset hidden={stage !== 1} disabled={stage !== 1} className="min-w-0">
+        <StageTime draft={draft} setDraft={setDraft} />
+      </fieldset>
       {stage === 2 && <StageMessages draft={draft} setDraft={setDraft} />}
 
       {appAlreadyCovered && (
@@ -81,7 +90,7 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
         Enter a whole number from 1 to 2,147,483,647 minutes for session reminders.
       </AlertDescription></Alert>}
 
-      {mutations.error && (
+      {mutations.error && !confirmDelete && (
         <Alert variant="destructive"><AlertDescription>
           {mutations.error.message}
         </AlertDescription></Alert>
@@ -99,27 +108,46 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
 
         <div className="flex items-center gap-2">
           {isEdit && stage === 0 && (
-            <Button
-              type="button"
-              onClick={handleDelete}
-              disabled={mutations.saving}
-              variant="destructive"
-            >
-              Delete
-            </Button>
+            <AlertDialog open={confirmDelete} onOpenChange={(open) => {
+              if (mutations.saving) return
+              mutations.clearError()
+              setConfirmDelete(open)
+            }}>
+              <AlertDialogTrigger asChild>
+                <Button type="button" disabled={mutations.saving} variant="destructive">Delete</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent aria-busy={mutations.saving}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove the pause for {initial.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This deletes its saved pause settings and messages. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {mutations.error && <Alert variant="destructive"><AlertDescription>
+                  Couldn't remove the pause: {mutations.error.message} Try deleting again.
+                </AlertDescription></Alert>}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={mutations.saving}>Keep app</AlertDialogCancel>
+                  <AlertDialogAction variant="destructive" disabled={mutations.saving} onClick={(event) => {
+                    event.preventDefault()
+                    void handleDelete()
+                  }}>
+                    {mutations.saving ? "Deleting…" : "Delete pause"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           {stage < 2 ? (
             <Button
-              type="button"
-              disabled={!draft.appId || appAlreadyCovered || reminderInvalid}
-              onClick={() => setStage((stage + 1) as Stage)}
+              type="submit"
+              disabled={!draft.appId || appAlreadyCovered || (stage === 1 && reminderInvalid)}
             >
               Next →
             </Button>
           ) : (
             <Button
-              type="button"
-              onClick={save}
+              type="submit"
               disabled={mutations.saving || appAlreadyCovered || reminderInvalid}
             >
               {mutations.saving ? "Saving…" : isEdit ? "Save" : "Create"}
@@ -127,7 +155,7 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
           )}
         </div>
       </div>
-    </div>
+    </form>
   )
 }
 

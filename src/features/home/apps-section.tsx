@@ -8,14 +8,19 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { formatDuration, type FrictionApp } from "@/lib/friction"
 
-export function AppsSection({ loading, error, data }: { loading: boolean; error: Error | null; data: FrictionApp[] }) {
+export function AppsSection({ loading, error, data, onRetry }: {
+  loading: boolean; error: Error | null; data: FrictionApp[]; onRetry: () => void
+}) {
   return (
-    <section className="flex min-w-0 flex-col gap-4">
+    <section className="flex min-w-0 flex-col gap-4" aria-busy={loading}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Your limited apps</h2>
         {!loading && <Badge variant="secondary">{data.length}</Badge>}
       </div>
-      {error && <Alert variant="destructive"><AlertDescription>Couldn't load apps: {error.message}</AlertDescription></Alert>}
+      {error && <Alert variant="destructive"><AlertDescription>
+        Couldn't load apps: {error.message}
+        <Button type="button" variant="outline" onClick={onRetry}>Retry</Button>
+      </AlertDescription></Alert>}
       {loading ? <><AppCardSkeleton /><AppCardSkeleton /></> : data.length === 0 && !error ? (
         <Empty><EmptyHeader><EmptyTitle>A little pause goes a long way</EmptyTitle><EmptyDescription>Add an app to create a moment of intention before opening it.</EmptyDescription></EmptyHeader></Empty>
       ) : (

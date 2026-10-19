@@ -94,6 +94,18 @@ pnpm tauri android build
 
 Generated APKs are placed under `src-tauri/gen/android/app/build/outputs/apk/`.
 
+### Check configuration workflows
+
+After installing dependencies, install the test browser once and run the checks:
+
+```bash
+pnpm exec playwright install chromium
+pnpm test
+pnpm build
+```
+
+The browser tests start their own Vite server on port 1425 and exercise deletion confirmation, load recovery, permission feedback, and timing validation with a simulated native bridge. They do not verify Android settings, native overlays, or TalkBack; check those on a device or emulator.
+
 ## How it works
 
 1. Friction Timer uses an `AccessibilityService` to detect when a selected app moves to the foreground.
