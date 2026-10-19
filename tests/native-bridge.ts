@@ -13,7 +13,8 @@ export const savedApp: FrictionApp = {
 };
 
 // Only the native IPC boundary is replaced; tests exercise the real UI and hooks.
-export async function mockNativeBridge(page: Page) {
+export async function mockNativeBridge(page: Page, firstRun = false) {
+  if (!firstRun) await page.addInitScript(() => localStorage.setItem("friction-permission-setup-complete", "true"));
   const state = {
     apps: [{ ...savedApp, messages: [...savedApp.messages] }],
     defaults: {} as FrictionAppDefaults,

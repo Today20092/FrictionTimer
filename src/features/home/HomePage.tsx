@@ -8,10 +8,14 @@ import { useState } from "react";
 import { AppsSection } from "./apps-section";
 import { DefaultsManager } from "./defaults-manager";
 import { PermissionsSection } from "./permissions-section";
+import { PermissionSetup, PERMISSION_SETUP_KEY } from "./permission-setup";
 
 const REPOSITORY_URL = "https://github.com/Today20092/FrictionTimer";
 
 export function HomePage() {
+  const [setupComplete, setSetupComplete] = useState(() => {
+    try { return localStorage.getItem(PERMISSION_SETUP_KEY) === "true"; } catch { return false; }
+  });
   const [manageDefaults, setManageDefaults] = useState(false);
   const apps = useApps();
   const services = useServiceStatus();
@@ -30,7 +34,10 @@ export function HomePage() {
     <div className="flex min-h-dvh flex-col">
       <AppHeader />
       <main className="container-app flex flex-1 flex-col gap-5 py-4">
-        {manageDefaults ? <DefaultsManager onBack={() => setManageDefaults(false)} /> : <>
+        {!setupComplete ? <PermissionSetup services={services} onFinish={() => {
+          try { localStorage.setItem(PERMISSION_SETUP_KEY, "true"); } catch { /* Continue even when storage is unavailable. */ }
+          setSetupComplete(true);
+        }} /> : manageDefaults ? <DefaultsManager onBack={() => setManageDefaults(false)} /> : <>
         {recommendations.length > 0 && <section className="flex min-w-0 flex-col gap-2">
           <h2 className="text-lg font-semibold">Recommended apps</h2>
           <p className="text-sm text-muted-foreground">Add a pause before opening a feed.</p>
