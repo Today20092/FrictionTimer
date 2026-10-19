@@ -8,6 +8,9 @@ export {
   createApp,
   updateApp,
   deleteApp,
+  getAppDefaults,
+  setAppDefaults,
+  applyAppDefaults,
   getServiceStatus,
   getSystemTheme,
   openServiceSettings,
@@ -17,6 +20,7 @@ export {
 } from "./api";
 export {
   useApps,
+  useAppDefaults,
   useApp,
   useAppMutations,
   useServiceStatus,

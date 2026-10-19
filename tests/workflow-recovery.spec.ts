@@ -1,6 +1,26 @@
 import { expect, test } from "@playwright/test";
 import { mockNativeBridge, savedApp } from "./native-bridge";
 
+test("saved defaults apply only selected settings to confirmed apps", async ({ page }) => {
+  const native = await mockNativeBridge(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Manage defaults" }).click();
+  await page.getByLabel("Copy values from a saved app").selectOption("saved-app");
+  await page.getByRole("switch", { name: "Use a default wait time" }).check();
+  await page.getByRole("group", { name: "Default wait time" }).getByLabel("Seconds").fill("12");
+  await page.getByRole("button", { name: "Save defaults" }).click();
+  await expect(page.getByRole("button", { name: "Save defaults" })).toBeEnabled();
+  await page.getByRole("switch", { name: "Reader" }).check();
+  await page.getByRole("button", { name: "Apply to 1 app" }).click();
+  const confirmation = page.getByRole("alertdialog", { name: "Apply defaults to 1 app?" });
+  await expect(confirmation).toContainText("Wait time");
+  await confirmation.getByRole("button", { name: "Apply settings" }).click();
+  await expect(page.getByText("Updated 1 app.")).toBeVisible();
+  expect(native.apps[0].waitSeconds).toBe(12);
+  expect(native.apps[0].durationSeconds).toBe(300);
+  expect(native.apps[0].messages).toEqual(["Take a breath."]);
+});
+
 test("deleting an app requires confirmation and cancelling preserves its settings", async ({ page }) => {
   await mockNativeBridge(page);
   await page.goto("/app/saved-app");

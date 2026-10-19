@@ -1,4 +1,4 @@
-import type { FrictionApp, FrictionAppDraft } from "@/lib/friction"
+import type { FrictionApp, FrictionAppDefaults, FrictionAppDraft } from "@/lib/friction"
 
 export type Stage = 0 | 1 | 2
 
@@ -33,6 +33,19 @@ export function draftFromApp(app: FrictionApp): FrictionAppDraft {
     messages: [...app.messages],
     reminderEnabled: app.reminderEnabled,
     reminderIntervalMinutes: app.reminderIntervalMinutes,
+  }
+}
+
+export function applyDefaultsToDraft(draft: FrictionAppDraft, defaults: FrictionAppDefaults): FrictionAppDraft {
+  return {
+    ...draft,
+    ...(defaults.waitSeconds === undefined ? {} : { waitSeconds: defaults.waitSeconds }),
+    ...(defaults.durationSeconds === undefined ? {} : { durationSeconds: defaults.durationSeconds }),
+    ...(defaults.messages === undefined ? {} : { messages: [...defaults.messages] }),
+    ...(defaults.sessionReminders === undefined ? {} : {
+      reminderEnabled: defaults.sessionReminders.enabled,
+      reminderIntervalMinutes: defaults.sessionReminders.intervalMinutes,
+    }),
   }
 }
 

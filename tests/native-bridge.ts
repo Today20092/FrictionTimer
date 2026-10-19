@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import type { FrictionApp, ServiceStatus } from "../src/lib/friction/types";
+import type { FrictionApp, FrictionAppDefaults, ServiceStatus } from "../src/lib/friction/types";
 
 export const savedApp: FrictionApp = {
   id: "saved-app",
@@ -16,6 +16,7 @@ export const savedApp: FrictionApp = {
 export async function mockNativeBridge(page: Page) {
   const state = {
     apps: [{ ...savedApp, messages: [...savedApp.messages] }],
+    defaults: {} as FrictionAppDefaults,
     failures: new Set<string>(),
     permissions: { overlay: true, accessibility: true, notifications: true } as ServiceStatus,
     installed: [savedApp, { appId: "com.example.notes", name: "Notes" }, { appId: "com.instagram.android", name: "Instagram" }],
@@ -28,6 +29,24 @@ export async function mockNativeBridge(page: Page) {
       case "get_system_theme": return null;
       case "list_apps": return state.apps;
       case "get_app": return state.apps.find((app) => app.id === args.id) ?? null;
+      case "get_app_defaults": return state.defaults;
+      case "set_app_defaults":
+        state.defaults = args.defaults as FrictionAppDefaults;
+        return state.defaults;
+      case "apply_app_defaults": {
+        const input = args.input as { appIds: string[]; defaults: FrictionAppDefaults };
+        for (const app of state.apps.filter(item => input.appIds.includes(item.id))) {
+          const defaults = input.defaults;
+          if (defaults.waitSeconds !== undefined) app.waitSeconds = defaults.waitSeconds;
+          if (defaults.durationSeconds !== undefined) app.durationSeconds = defaults.durationSeconds;
+          if (defaults.messages !== undefined) app.messages = [...defaults.messages];
+          if (defaults.sessionReminders !== undefined) {
+            app.reminderEnabled = defaults.sessionReminders.enabled;
+            app.reminderIntervalMinutes = defaults.sessionReminders.intervalMinutes;
+          }
+        }
+        return input.appIds.length;
+      }
       case "create_app": {
         const app = { ...(args.input as Omit<FrictionApp, "id">), id: "new-app" };
         state.apps.push(app);

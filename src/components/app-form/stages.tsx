@@ -132,11 +132,12 @@ export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDra
   )
 }
 
-function TimeBlock({ label, hint, h, m, s, onChange }: {
+export function TimeBlock({ label, hint, h, m, s, onChange }: {
   label: string; hint: string; h: number; m: number; s: number
   onChange: (h: number, m: number, s: number) => void
 }) {
   const [values, setValues] = useState({ h: String(h), m: String(m), s: String(s) })
+  useEffect(() => setValues({ h: String(h), m: String(m), s: String(s) }), [h, m, s])
 
   function change(part: keyof typeof values, value: string) {
     const next = { ...values, [part]: value }

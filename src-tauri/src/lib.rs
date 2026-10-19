@@ -5,7 +5,10 @@ mod theme;
 
 use installed_apps::list_installed_apps;
 use permissions::{get_service_status, open_service_settings};
-use storage::{AppState, CreateAppInput, FrictionApp, UpdateAppInput};
+use storage::{
+    AppState, ApplyAppDefaultsInput, CreateAppInput, FrictionApp, FrictionAppDefaults,
+    UpdateAppInput,
+};
 use tauri::{Manager, State};
 
 #[tauri::command]
@@ -37,6 +40,27 @@ fn delete_app(state: State<'_, AppState>, id: String) -> Result<(), String> {
     storage::delete_app(state.db_path(), &id).map_err(|err| err.to_string())
 }
 
+#[tauri::command]
+fn get_app_defaults(state: State<'_, AppState>) -> Result<FrictionAppDefaults, String> {
+    storage::get_app_defaults(state.db_path()).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn set_app_defaults(
+    state: State<'_, AppState>,
+    defaults: FrictionAppDefaults,
+) -> Result<FrictionAppDefaults, String> {
+    storage::set_app_defaults(state.db_path(), defaults).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn apply_app_defaults(
+    state: State<'_, AppState>,
+    input: ApplyAppDefaultsInput,
+) -> Result<usize, String> {
+    storage::apply_app_defaults(state.db_path(), input).map_err(|err| err.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -57,6 +81,9 @@ pub fn run() {
             create_app,
             update_app,
             delete_app,
+            get_app_defaults,
+            set_app_defaults,
+            apply_app_defaults,
             list_installed_apps,
             get_service_status,
             open_service_settings,

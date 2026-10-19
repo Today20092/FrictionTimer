@@ -59,6 +59,33 @@ pub struct UpdateAppInput {
     pub reminder_interval_minutes: Option<i64>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionReminderDefaults {
+    pub enabled: bool,
+    pub interval_minutes: i64,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FrictionAppDefaults {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wait_seconds: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration_seconds: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub messages: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_reminders: Option<SessionReminderDefaults>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyAppDefaultsInput {
+    pub app_ids: Vec<String>,
+    pub defaults: FrictionAppDefaults,
+}
+
 #[derive(Debug)]
 pub enum StorageError {
     Io(std::io::Error),
@@ -117,6 +144,15 @@ pub fn initialize_database(db_path: &Path) -> Result<(), StorageError> {
             messages_json TEXT NOT NULL,
             reminder_enabled INTEGER NOT NULL DEFAULT 0,
             reminder_interval_minutes INTEGER NOT NULL DEFAULT 10
+        );
+        CREATE TABLE IF NOT EXISTS friction_app_defaults (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            wait_seconds INTEGER,
+            duration_seconds INTEGER,
+            messages_json TEXT,
+            reminder_enabled INTEGER,
+            reminder_interval_minutes INTEGER,
+            CHECK ((reminder_enabled IS NULL) = (reminder_interval_minutes IS NULL))
         );",
     )?;
 
@@ -232,6 +268,104 @@ pub fn delete_app(db_path: &Path, id: &str) -> Result<(), StorageError> {
     Ok(())
 }
 
+pub fn get_app_defaults(db_path: &Path) -> Result<FrictionAppDefaults, StorageError> {
+    let conn = open_connection(db_path)?;
+    conn.query_row(
+        "SELECT wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes
+         FROM friction_app_defaults WHERE id = 1",
+        [],
+        map_defaults_row,
+    )
+    .optional()
+    .map(|defaults| defaults.unwrap_or_default())
+    .map_err(StorageError::from)
+}
+
+pub fn set_app_defaults(
+    db_path: &Path,
+    defaults: FrictionAppDefaults,
+) -> Result<FrictionAppDefaults, StorageError> {
+    let defaults = normalize_defaults(defaults)?;
+    let conn = open_connection(db_path)?;
+    conn.execute(
+        "INSERT INTO friction_app_defaults
+            (id, wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes)
+         VALUES (1, ?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET
+            wait_seconds = excluded.wait_seconds,
+            duration_seconds = excluded.duration_seconds,
+            messages_json = excluded.messages_json,
+            reminder_enabled = excluded.reminder_enabled,
+            reminder_interval_minutes = excluded.reminder_interval_minutes",
+        params![
+            defaults.wait_seconds,
+            defaults.duration_seconds,
+            defaults.messages.as_ref().map(serde_json::to_string).transpose()?,
+            defaults.session_reminders.as_ref().map(|value| value.enabled),
+            defaults.session_reminders.as_ref().map(|value| value.interval_minutes),
+        ],
+    )?;
+    Ok(defaults)
+}
+
+pub fn apply_app_defaults(
+    db_path: &Path,
+    input: ApplyAppDefaultsInput,
+) -> Result<usize, StorageError> {
+    let defaults = normalize_defaults(input.defaults)?;
+    if defaults == FrictionAppDefaults::default() {
+        return Err(StorageError::Validation(
+            "Select at least one setting to apply".into(),
+        ));
+    }
+    let ids = input
+        .app_ids
+        .into_iter()
+        .collect::<std::collections::HashSet<_>>();
+    if ids.is_empty() {
+        return Err(StorageError::Validation(
+            "Select at least one app to update".into(),
+        ));
+    }
+
+    let mut conn = open_connection(db_path)?;
+    let transaction = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    for id in &ids {
+        let rows = transaction.execute(
+            "UPDATE friction_apps SET
+                wait_seconds = COALESCE(?2, wait_seconds),
+                duration_seconds = COALESCE(?3, duration_seconds),
+                messages_json = COALESCE(?4, messages_json),
+                reminder_enabled = COALESCE(?5, reminder_enabled),
+                reminder_interval_minutes = COALESCE(?6, reminder_interval_minutes)
+             WHERE id = ?1",
+            params![
+                id,
+                defaults.wait_seconds,
+                defaults.duration_seconds,
+                defaults
+                    .messages
+                    .as_ref()
+                    .map(serde_json::to_string)
+                    .transpose()?,
+                defaults
+                    .session_reminders
+                    .as_ref()
+                    .map(|value| value.enabled),
+                defaults
+                    .session_reminders
+                    .as_ref()
+                    .map(|value| value.interval_minutes),
+            ],
+        )?;
+        if rows == 0 {
+            return Err(StorageError::NotFound(format!("App not found: {id}")));
+        }
+    }
+    transaction.commit()?;
+    Ok(ids.len())
+}
+
 fn open_connection(db_path: &Path) -> Result<Connection, StorageError> {
     initialize_database(db_path)?;
     Ok(Connection::open(db_path)?)
@@ -251,6 +385,46 @@ fn map_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<FrictionApp> {
         reminder_enabled: row.get(6)?,
         reminder_interval_minutes: row.get(7)?,
     })
+}
+
+fn map_defaults_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<FrictionAppDefaults> {
+    let messages_json: Option<String> = row.get(2)?;
+    let reminder_enabled: Option<bool> = row.get(3)?;
+    let reminder_interval_minutes: Option<i64> = row.get(4)?;
+    let session_reminders = match (reminder_enabled, reminder_interval_minutes) {
+        (Some(enabled), Some(interval_minutes)) => Some(SessionReminderDefaults {
+            enabled,
+            interval_minutes,
+        }),
+        _ => None,
+    };
+
+    Ok(FrictionAppDefaults {
+        wait_seconds: row.get(0)?,
+        duration_seconds: row.get(1)?,
+        messages: messages_json
+            .map(|json| serde_json::from_str(&json).map_err(to_sql_error))
+            .transpose()?,
+        session_reminders,
+    })
+}
+
+fn normalize_defaults(
+    mut defaults: FrictionAppDefaults,
+) -> Result<FrictionAppDefaults, StorageError> {
+    if let Some(value) = defaults.wait_seconds {
+        defaults.wait_seconds = Some(validate_seconds("waitSeconds", value)?);
+    }
+    if let Some(value) = defaults.duration_seconds {
+        defaults.duration_seconds = Some(validate_duration(value)?);
+    }
+    if let Some(messages) = defaults.messages.take() {
+        defaults.messages = Some(normalize_messages(messages));
+    }
+    if let Some(reminders) = &defaults.session_reminders {
+        validate_reminder_interval(reminders.interval_minutes)?;
+    }
+    Ok(defaults)
 }
 
 fn normalize_create_input(input: CreateAppInput) -> Result<FrictionApp, StorageError> {
@@ -480,6 +654,65 @@ mod tests {
         assert!(serde_json::from_value::<UpdateAppInput>(serde_json::json!({
             "reminderIntervalMinutes": 1.5
         }))
+        .is_err());
+        let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn app_defaults_round_trip_and_apply_only_selected_fields_and_apps() {
+        let db_path = temp_db_path("app-defaults");
+        let first = create_app(&db_path, sample_input()).unwrap();
+        let second = create_app(
+            &db_path,
+            CreateAppInput {
+                app_id: "com.reddit.android".into(),
+                name: "Reddit".into(),
+                reminder_enabled: true,
+                reminder_interval_minutes: 3,
+                ..sample_input()
+            },
+        )
+        .unwrap();
+        let defaults = FrictionAppDefaults {
+            wait_seconds: Some(12),
+            session_reminders: Some(SessionReminderDefaults {
+                enabled: true,
+                interval_minutes: 7,
+            }),
+            ..FrictionAppDefaults::default()
+        };
+
+        set_app_defaults(&db_path, defaults.clone()).unwrap();
+        assert_eq!(get_app_defaults(&db_path).unwrap(), defaults);
+        assert_eq!(
+            apply_app_defaults(
+                &db_path,
+                ApplyAppDefaultsInput {
+                    app_ids: vec![first.id.clone()],
+                    defaults,
+                },
+            )
+            .unwrap(),
+            1
+        );
+
+        let updated = get_app(&db_path, &first.id).unwrap().unwrap();
+        assert_eq!(updated.wait_seconds, 12);
+        assert_eq!(updated.duration_seconds, first.duration_seconds);
+        assert_eq!(updated.messages, first.messages);
+        assert!(updated.reminder_enabled);
+        assert_eq!(updated.reminder_interval_minutes, 7);
+        assert_eq!(get_app(&db_path, &second.id).unwrap().unwrap(), second);
+        assert!(apply_app_defaults(
+            &db_path,
+            ApplyAppDefaultsInput {
+                app_ids: vec!["missing".into()],
+                defaults: FrictionAppDefaults {
+                    wait_seconds: Some(1),
+                    ..FrictionAppDefaults::default()
+                },
+            }
+        )
         .is_err());
         let _ = fs::remove_file(db_path);
     }
