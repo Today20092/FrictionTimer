@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
+import { version } from "../../package.json";
 
 export function AppHeader() {
   return (
@@ -13,7 +14,7 @@ export function AppHeader() {
           </h1>
         </Link>
         <Badge variant="outline">
-          v2.0.0
+          v{version}
         </Badge>
       </div>
     </header>

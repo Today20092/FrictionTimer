@@ -1,0 +1,117 @@
+name: Android APK release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      NDK_VERSION: 28.2.13676358
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+          cache: pnpm
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v4.0.4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;$NDK_VERSION"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          rustup update stable --no-self-update
+          rustup default stable
+          rustup target add aarch64-linux-android
+          rustup component add rustfmt
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate release version
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: node scripts/check-release.mjs
+      - name: Check frontend
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm build
+          pnpm test
+      - name: Check Rust
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+          cargo test --locked --manifest-path src-tauri/Cargo.toml
+      - name: Restore release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          names = ["ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD"]
+          if any(not os.environ.get(name) for name in names):
+              raise SystemExit("Missing Android signing secrets")
+          key = Path(os.environ["RUNNER_TEMP"]) / "friction-release.jks"
+          key.write_bytes(base64.b64decode(os.environ["ANDROID_KEYSTORE_BASE64"], validate=True))
+          key.chmod(0o600)
+          def escape(value):
+              return value.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r")
+          props = {"storeFile": str(key), "storePassword": os.environ["ANDROID_KEYSTORE_PASSWORD"],
+                   "keyAlias": os.environ["ANDROID_KEY_ALIAS"], "keyPassword": os.environ["ANDROID_KEY_PASSWORD"]}
+          path = Path("src-tauri/gen/android/keystore.properties")
+          path.write_text("".join(f"{name}={escape(value)}\n" for name, value in props.items()))
+          path.chmod(0o600)
+          PY
+      - name: Build signed APK
+        run: pnpm tauri android build --target aarch64 --apk
+      - name: Check Android session and overlay logic
+        working-directory: src-tauri/gen/android
+        run: ./gradlew :app:testArmDebugUnitTest
+      - name: Verify and prepare assets
+        run: |
+          APK=src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          VERSION=$(node -p "require('./package.json').version")
+          mkdir -p release-assets
+          cp "$APK" "release-assets/FrictionTimer-v$VERSION-arm64.apk"
+          cd release-assets
+          sha256sum *.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: signed-android-apk
+          path: release-assets/*
+          if-no-files-found: error
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --draft --title "Friction Timer $TAG" --notes-file "docs/releases/$TAG.md"
+          fi
+          gh release upload "$TAG" release-assets/* --clobber
+          gh release edit "$TAG" --draft=false --latest --notes-file "docs/releases/$TAG.md"
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/friction-release.jks" src-tauri/gen/android/keystore.properties

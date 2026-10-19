@@ -51,7 +51,7 @@ Android Gradle checks require the local Java/Android/Tauri build environment. `F
 
 For service/overlay changes, also exercise a configured app on a device or emulator: countdown and proceed, cancel, leaving/re-entering the app, cooldown expiry, and permission changes. A passing JVM or desktop Rust suite does not establish device behavior.
 
-There is currently no frontend test runner, lint script, checked-in CI workflow, or pre-commit configuration. Use the existing build/type check and focused manual UI checks; do not report nonexistent checks as passing. Follow neighboring source formatting and the Android `.editorconfig` rather than reformatting unrelated files.
+Run `pnpm test` for Playwright UI checks with a simulated native bridge. The Android release workflow also runs frontend, Rust, and Android JVM checks before publishing signed APKs. There is no lint script or pre-commit configuration. Follow neighboring source formatting and the Android `.editorconfig` rather than reformatting unrelated files.
 
 Completion: review the diff for unintended generated files and user-data/signing artifacts; report checks run, failures, and device/environment checks that remain unverified. No repository-specific commit or PR template is currently configured.
 

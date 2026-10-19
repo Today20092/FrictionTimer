@@ -1,126 +1,70 @@
 <div align="center">
   <img src="public/brand/app-icon.svg" width="96" height="96" alt="Friction Timer hourglass" />
   <h1>Friction Timer</h1>
-  <p><i>Made by <a href="https://www.brunorochamoura.com/about/">BRM</a>.</i></p>
-  <br />
+  <p>A moment to think before you open an app. A reminder when you keep scrolling.</p>
 </div>
 
-Friction Timer is an Android app that adds a waiting period before you can use selected apps.
+<p align="center">
+  <a href="https://github.com/Today20092/FrictionTimer/releases/latest"><img alt="Version 2.1.0" src="https://img.shields.io/badge/Version-2.1.0-C4A7E7?style=for-the-badge&amp;logo=github&amp;labelColor=493267"></a>
+  <a href="docs/usage.md"><img alt="Android 7 and newer, ARM64" src="https://img.shields.io/badge/Android-7%2B%20ARM64-B5DFE8?style=for-the-badge&amp;logo=android&amp;labelColor=29626B"></a>
+  <a href="docs/usage.md#privacy"><img alt="Settings stored locally" src="https://img.shields.io/badge/Settings-Local-A2FFB0?style=for-the-badge&amp;labelColor=246732"></a>
+  <a href="LICENSE"><img alt="License AGPLv3" src="https://img.shields.io/badge/License-AGPLv3-F4C98B?style=for-the-badge&amp;labelColor=75512B"></a>
+</p>
 
-When you open an app you've added to the list, Friction Timer displays an overlay on top of it, preventing you from using the app while a countdown runs.
+<p align="center">
+  <a href="https://github.com/Today20092/FrictionTimer/releases/latest"><strong>Download the APK</strong></a> ·
+  <a href="docs/usage.md">Usage guide</a> ·
+  <a href="docs/releases/v2.1.0.md">What's new</a> ·
+  <a href="docs/development.md">Development</a> ·
+  <a href="https://github.com/Today20092/FrictionTimer/issues">Report a problem</a>
+</p>
 
-You can wait for the timer to finish or cancel and back out.
+Friction Timer adds a waiting overlay before selected Android apps open. Wait and proceed, or cancel and put the phone down. You choose the wait, messages, and how soon another pause is needed for each app.
 
-The point is simple: make impulsive opens slower.
+## Get started
 
-On supported Android 12+ devices, the settings screen and waiting overlay use the system's dynamic Material colors and light/dark appearance. Colors refresh when the settings screen regains focus or becomes visible. Other platforms and unsupported devices retain the gold-and-charcoal palette. The hourglass branding stays gold; Android launchers can recolor its monochrome themed icon.
+1. Download the signed ARM64 APK from this fork's [latest release](https://github.com/Today20092/FrictionTimer/releases/latest) and allow your browser or file manager to install it.
+2. Enable **Display over other apps** and Friction Timer's **Accessibility service**.
+3. Pick a recommended app, or choose **Add any app**. Set your wait and messages, then save.
+4. Optionally enable session reminders and notification permission. The initial interval is **10 minutes**, and you can change it per app.
 
-The [brand kit](public/brand/README.md) includes hourglass icons, monochrome variants, and wordmarks. Open `public/brand/index.html` for the visual reference.
+The published APK supports Android 7+ on ARM64 devices. It uses this fork's signing key; an upstream or development build signed with another key cannot be updated in place. See [installation and updates](docs/usage.md#installation-and-updates) before replacing an existing install.
+
+## What you can do
+
+- **Pause before opening.** Set a different wait for each app, with your own messages and a finite or unlimited session.
+- **Find feed apps quickly.** Installed, unconfigured Facebook, Instagram, TikTok, YouTube, X, Mastodon, Threads, Bluesky, Reddit, and Snapchat appear as recommendations. Nothing is enabled automatically.
+- **Notice a long visit.** Optional quiet notifications say how long the current visit has lasted. They repeat at your chosen interval and clear when you leave the app or turn off the screen.
+- **Keep setup simple.** Tapping a recommendation opens setup with that app selected and scrolled into view. Editor actions stay on screen; long lists and content can still scroll on smaller displays.
+- **Use your phone's appearance.** Supported Android 12+ devices use dynamic Material colors and light/dark appearance. Other devices use the gold-and-charcoal palette.
+
+The permissions section disappears once all permissions are enabled and returns when setup needs attention. Notification permission is optional if you do not use reminders.
+
+## A look inside
+
+<p align="center">
+  <img src="screenshots/home.png" width="280" alt="Home screen with recommended feed apps and configured apps" />
+  <img src="screenshots/reminders.png" width="280" alt="Per-app wait and optional session reminder settings" />
+</p>
+
+Screenshots show the current interface with sample apps through a simulated native bridge. Native overlays and notifications are checked separately on Android.
 
 ## Why I forked this app
 
-I forked Friction Timer because I want to help people spend less time hooked on their phones. I also want to improve the UI, fix bugs, and contribute more to the app.
+I forked Friction Timer because I want to help people spend less time hooked on their phones. I also wanted to improve the UI, fix bugs, and contribute more to the app.
 
 I believe phones are very good tools. We use them to get things done, take photos, and keep memories. But a phone is also its own world. There is always something else to open, watch, or scroll through. With so much available at any moment, we need to be aware of what we're doing and set limits for ourselves.
 
 Social media can be useful too. Sometimes we go there to create, find ideas, or enjoy what other people share. That's fine. I want us to notice when we chose to do that and when we just tapped an app without thinking and started scrolling.
 
-My goal for this fork is to help you pause before that happens and become more aware of where your time goes. The waiting period gives you a moment to ask whether you actually want to open the app.
-
-One idea I want to explore is making apps with scrolling feeds, such as TikTok, Facebook, Instagram, X, and YouTube, visible as recommended apps to add friction to on the first screen. You would still be able to choose any app. This is a planned improvement, not a feature available yet.
-
-## What it does
-
-- Adds friction before you can use selected apps
-- Lets you choose a different wait time for each app
-- Lets you set a cooldown before the overlay appears again
-- Shows your own messages on the overlay while the timer runs
-
-## Screenshots
-
-<p align="center">
-  <img src="screenshots/screenshot_1.jpg" width="33%" alt="Screenshot 1" />
-  <img src="screenshots/screenshot_2.jpg" width="33%" alt="Screenshot 2" />
-</p>
-
-<p align="center">
-  <img src="screenshots/screenshot_3.jpg" width="33%" alt="Screenshot 3" />
-  <img src="screenshots/screenshot_4.jpg" width="33%" alt="Screenshot 4" />
-</p>
-
-<p align="center">
-  <img src="screenshots/screenshot_5.jpg" width="33%" alt="Screenshot 5" />
-</p>
-
-## Download
-
-Download the latest APK from the [Releases](https://github.com/BrunoRochaDev/FrictionTimer/releases) page.
+This fork gives you a pause before opening and an optional reminder during a visit. You still decide what to do with your time.
 
 ## Build it yourself
 
-This project is set up for Android with Tauri 2.
+Start with the [development guide](docs/development.md) for prerequisites, checks, and Android builds. The [release guide](docs/releases.md) explains signing and the automated APK workflow. The [brand kit](public/brand/README.md) contains icons and wordmarks.
 
-### Prerequisites
+## Credits and license
 
-- Node.js and `pnpm`
-- Rust stable via `rustup`
-- Android SDK and an emulator or USB-connected device
+Forked from [BrunoRochaDev/FrictionTimer](https://github.com/BrunoRochaDev/FrictionTimer), created by [Bruno Rocha Moura](https://www.brunorochamoura.com/about/). Thanks to [digipaws](https://github.com/nethical6/digipaws) for the original implementation's inspiration and reference.
 
-Install the Rust Android targets once:
-
-```bash
-rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
-```
-
-### Build from the command line
-
-Install dependencies:
-
-```bash
-pnpm install
-```
-
-Run the app on a connected Android device or emulator:
-
-```bash
-pnpm tauri android dev
-```
-
-Create a release build:
-
-```bash
-pnpm tauri android build
-```
-
-Generated APKs are placed under `src-tauri/gen/android/app/build/outputs/apk/`.
-
-### Check configuration workflows
-
-After installing dependencies, install the test browser once and run the checks:
-
-```bash
-pnpm exec playwright install chromium
-pnpm test
-pnpm build
-```
-
-The browser tests start their own Vite server on port 1425 and exercise deletion confirmation, load recovery, permission feedback, and timing validation with a simulated native bridge. They do not verify Android settings, native overlays, or TalkBack; check those on a device or emulator.
-
-## How it works
-
-1. Friction Timer uses an `AccessibilityService` to detect when a selected app moves to the foreground.
-2. It shows an overlay that blocks interaction until the countdown finishes.
-3. The overlay includes:
-   - a message from your configured list
-   - a disabled button that counts down and later changes to "Proceed"
-   - a "Cancel" button
-4. After you proceed, the overlay can appear again the next time that app opens once its cooldown has expired.
-5. Each app can have its own wait time, cooldown, and messages.
-
-## Credits
-
-Thanks to [digipaws](https://github.com/nethical6/digipaws) for the inspiration. Their source code served as a reference for the implementation of this app.
-
-## License
-
-This project is distributed under the AGPLv3 License. See the [LICENSE](https://github.com/BrunoRochaDev/FrictionTimer/blob/main/LICENSE) file for details.
+Distributed under [AGPLv3](LICENSE).
