@@ -12,7 +12,7 @@ export function AppsSection({ loading, error, data, onRetry }: {
   loading: boolean; error: Error | null; data: FrictionApp[]; onRetry: () => void
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-4" aria-busy={loading}>
+    <section className="flex min-w-0 flex-col gap-3" aria-busy={loading}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Your limited apps</h2>
         {!loading && <Badge variant="secondary">{data.length}</Badge>}
@@ -28,12 +28,12 @@ export function AppsSection({ loading, error, data, onRetry }: {
           {data.map((app) => (
             <li key={app.id}>
               <Link to="/app/$id" params={{ id: app.id }} className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <Card>
-                  <CardHeader>
+                <Card className="gap-3 py-3">
+                  <CardHeader className="gap-1 px-4">
                     <CardTitle className="flex items-start justify-between gap-3"><span className="min-w-0 wrap-anywhere">{app.name}</span><ArrowUpRight className="size-4 shrink-0" /></CardTitle>
                     <CardDescription className="wrap-anywhere">{app.appId}</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex flex-wrap gap-2">
+                  <CardContent className="flex flex-wrap gap-2 px-4">
                     <Badge variant="secondary">Wait {formatDuration(app.waitSeconds)}</Badge>
                     <Badge variant="outline">{app.durationSeconds === 0 ? "Unlimited session" : `Open for ${formatDuration(app.durationSeconds)}`}</Badge>
                   </CardContent>

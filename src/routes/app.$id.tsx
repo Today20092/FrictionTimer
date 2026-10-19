@@ -31,10 +31,10 @@ function EditAppPage() {
   }, [loading, error, app, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex h-dvh flex-col">
       <AppHeader />
-      <main className="container-app flex-1 py-6">
-        <h2 className="mb-4 text-lg font-bold">Edit application</h2>
+      <main className="container-app flex min-h-0 flex-1 flex-col gap-3 py-3">
+        <h2 className="shrink-0 text-lg font-bold">Edit application</h2>
 
         {loading && !currentApp && <EditFormSkeleton />}
 

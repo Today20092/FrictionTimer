@@ -58,7 +58,7 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
   }
 
   return (
-    <form className="flex min-w-0 flex-col gap-6" onSubmit={(event) => {
+    <form className="flex min-h-0 min-w-0 flex-1 flex-col gap-3" onSubmit={(event) => {
       event.preventDefault()
       if (!draft.appId || appAlreadyCovered || (stage !== 0 && reminderInvalid) || mutations.saving) return
       if (stage < 2) setStage((stage + 1) as Stage)
@@ -66,37 +66,39 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
     }}>
       <Stepper stage={stage} />
 
-      {stage === 0 && (
-        <StageApp
-          draft={draft}
-          setDraft={setDraft}
-          isEdit={isEdit}
-          coveredAppIds={coveredAppIds}
-          currentAppId={initial?.appId}
-          suggestedAppId={suggestedAppId}
-        />
-      )}
-      <fieldset hidden={stage !== 1} disabled={stage !== 1} className="min-w-0">
-        <StageTime draft={draft} setDraft={setDraft} />
-      </fieldset>
-      {stage === 2 && <StageMessages draft={draft} setDraft={setDraft} />}
+      <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain" data-slot="editor-content">
+        {stage === 0 && (
+          <StageApp
+            draft={draft}
+            setDraft={setDraft}
+            isEdit={isEdit}
+            coveredAppIds={coveredAppIds}
+            currentAppId={initial?.appId}
+            suggestedAppId={suggestedAppId}
+          />
+        )}
+        <fieldset hidden={stage !== 1} disabled={stage !== 1} className="min-w-0">
+          <StageTime draft={draft} setDraft={setDraft} />
+        </fieldset>
+        {stage === 2 && <StageMessages draft={draft} setDraft={setDraft} />}
 
-      {appAlreadyCovered && (
-        <Alert><AlertDescription>
-          That app is already covered by another saved entry. Choose a different app to continue.
-        </AlertDescription></Alert>
-      )}
-      {reminderInvalid && <Alert variant="destructive"><AlertDescription>
-        Enter a whole number from 1 to 2,147,483,647 minutes for session reminders.
-      </AlertDescription></Alert>}
+        {appAlreadyCovered && (
+          <Alert><AlertDescription>
+            That app is already covered by another saved entry. Choose a different app to continue.
+          </AlertDescription></Alert>
+        )}
+        {reminderInvalid && <Alert variant="destructive"><AlertDescription>
+          Enter a whole number from 1 to 2,147,483,647 minutes for session reminders.
+        </AlertDescription></Alert>}
 
-      {mutations.error && !confirmDelete && (
-        <Alert variant="destructive"><AlertDescription>
-          {mutations.error.message}
-        </AlertDescription></Alert>
-      )}
+        {mutations.error && !confirmDelete && (
+          <Alert variant="destructive"><AlertDescription>
+            {mutations.error.message}
+          </AlertDescription></Alert>
+        )}
+      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-3" data-slot="editor-actions">
         <Button
           type="button"
           onClick={() => (stage === 0 ? navigate({ to: "/" }) : setStage((stage - 1) as Stage))}
@@ -161,10 +163,10 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
 
 function Stepper({ stage }: { stage: Stage }) {
   return (
-    <ol aria-label="Application setup" className="grid grid-cols-3 gap-2">
+    <ol aria-label="Application setup" className="grid shrink-0 grid-cols-3 gap-2">
       {["App", "Timing", "Messages"].map((label, i) => (
         <li key={label} aria-current={i === stage ? "step" : undefined}
-          className={cn("flex min-w-0 flex-col items-center gap-2 rounded-xl border px-1 py-3 text-center text-sm", i === stage ? "border-primary bg-primary/10" : "text-muted-foreground")}>
+          className={cn("flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-1 py-2 text-center text-sm", i === stage ? "border-primary bg-primary/10" : "text-muted-foreground")}>
           <Badge variant={i === stage ? "default" : "outline"}>{i + 1}</Badge>
           <span className="max-w-full wrap-anywhere">{label}</span>
         </li>

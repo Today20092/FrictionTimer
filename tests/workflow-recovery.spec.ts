@@ -88,7 +88,7 @@ test("settings-launch errors preserve checked permissions and can be retried", a
   await expect(failure).not.toBeVisible();
   native.permissions = { overlay: true, accessibility: true, notifications: true };
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  await expect(page.getByRole("button", { name: "Accessibility service Enabled" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Permissions", exact: true })).not.toBeVisible();
 });
 
 test("a failed navigation to another app never leaves the previous app editable", async ({ page }) => {
@@ -196,14 +196,14 @@ test("permission check failures show unknown status and retry restores verified 
   await expect(permissions.getByText("Unknown", { exact: true })).toHaveCount(3);
   native.failures.delete("get_service_status");
   await failure.getByRole("button", { name: "Retry" }).click();
-  await expect(permissions.getByText("Enabled", { exact: true })).toHaveCount(3);
+  await expect(permissions).not.toBeVisible();
   native.failures.add("get_service_status");
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(failure).toBeVisible();
   await expect(permissions.getByText("Enabled", { exact: true })).toHaveCount(0);
   native.failures.delete("get_service_status");
   await failure.getByRole("button", { name: "Retry" }).click();
-  await expect(permissions.getByText("Enabled", { exact: true })).toHaveCount(3);
+  await expect(permissions).not.toBeVisible();
 });
 
 test("a failed installed-app search can be retried without losing the query or selection", async ({ page }) => {

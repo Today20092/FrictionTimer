@@ -31,17 +31,17 @@ export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId,
     }
   }, [apps, loading, pending, suggestedAppId, setDraft])
   return (
-    <FieldGroup>
-      <Field>
+    <FieldGroup className="h-full min-h-0 gap-3">
+      <Field className="shrink-0 gap-2">
         <FieldLabel htmlFor="app-search">Choose an application</FieldLabel>
-        <FieldDescription>{isEdit ? "Change which installed app to limit." : "Pick from apps installed on the device."}</FieldDescription>
+        <FieldDescription className="sr-only">{isEdit ? "Change which installed app to limit." : "Pick from apps installed on the device."}</FieldDescription>
         <Input id="app-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search apps…" />
       </Field>
       {error && !pending && <Alert variant="destructive"><AlertDescription>
         Couldn't load installed apps: {error.message}
         <Button type="button" variant="outline" onClick={refresh}>Retry</Button>
       </AlertDescription></Alert>}
-      <div className="max-h-96 overflow-x-hidden overflow-y-auto rounded-xl border" aria-busy={loading || pending}>
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border" aria-busy={loading || pending}>
         {loading || pending ? Array.from({ length: 5 }, (_, i) => <InstalledAppRowSkeleton key={i} />) : error ? null : apps.length === 0 ? (
           <Empty><EmptyHeader><EmptyTitle>No apps found</EmptyTitle><EmptyDescription>Try a different search.</EmptyDescription></EmptyHeader></Empty>
         ) : (
@@ -52,7 +52,7 @@ export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId,
             {apps.map((app) => {
               const covered = app.appId !== currentAppId && coveredAppIds.has(app.appId)
               return (
-                <label key={app.appId} className="flex min-w-0 cursor-pointer items-center gap-3 border-b p-4 last:border-0 has-[[data-state=checked]]:bg-primary/10 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                <label key={app.appId} className="relative flex min-w-0 cursor-pointer items-center gap-3 border-b px-3 py-2.5 last:border-0 has-[[data-state=checked]]:bg-primary/10 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
                   <RadioGroupItem value={app.appId} disabled={covered} aria-label={app.name} />
                   <span className="flex min-w-0 flex-1 flex-col gap-1 wrap-anywhere">
                     <span className="text-sm font-medium">{app.name}</span>
@@ -76,25 +76,25 @@ export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDra
   const duration = secondsToHMS(draft.durationSeconds)
   const [finiteDuration, setFiniteDuration] = useState(draft.durationSeconds || 300)
   return (
-    <FieldGroup>
-      <TimeBlock label="Wait time" hint="Pause before the app unlocks. Minimum one second." {...wait}
+    <FieldGroup className="gap-2">
+      <TimeBlock label="Wait time" hint="Pause before opening. Minimum one second." {...wait}
         onChange={(h, m, s) => setDraft((current) => ({ ...current, waitSeconds: hmsToSeconds(h, m, s) }))} />
-      <Field orientation="horizontal" className="rounded-xl border p-4">
+      <Field orientation="horizontal" className="relative rounded-xl border p-3">
         <FieldContent>
           <FieldLabel htmlFor="unlimited">Unlimited duration</FieldLabel>
-          <FieldDescription id="unlimited-hint">Stay unlocked until you leave the app. You'll wait again when you return.</FieldDescription>
+          <FieldDescription id="unlimited-hint">Unlocked until you leave the app.</FieldDescription>
         </FieldContent>
         <Switch id="unlimited" aria-describedby="unlimited-hint" checked={draft.durationSeconds === 0} onCheckedChange={(unlimited) => {
           if (unlimited) setFiniteDuration(draft.durationSeconds)
           setDraft((current) => ({ ...current, durationSeconds: unlimited ? 0 : finiteDuration }))
         }} />
       </Field>
-      {draft.durationSeconds !== 0 && <TimeBlock label="Duration" hint="How long the app stays unlocked. Minimum one second." {...duration}
+      {draft.durationSeconds !== 0 && <TimeBlock label="Duration" hint="Time unlocked. Minimum one second." {...duration}
         onChange={(h, m, s) => setDraft((current) => ({ ...current, durationSeconds: hmsToSeconds(h, m, s) }))} />}
-      <Field orientation="horizontal" className="rounded-xl border p-4">
+      <Field orientation="horizontal" className="relative rounded-xl border p-3">
         <FieldContent>
           <FieldLabel htmlFor="session-reminders">Session reminders</FieldLabel>
-          <FieldDescription id="session-reminders-hint">Quiet reminders while you use this app. Each visit starts fresh.</FieldDescription>
+          <FieldDescription id="session-reminders-hint">Quiet nudges during each visit.</FieldDescription>
         </FieldContent>
         <Switch id="session-reminders" aria-describedby="session-reminders-hint" checked={draft.reminderEnabled}
           onCheckedChange={reminderEnabled => setDraft(current => ({ ...current, reminderEnabled,
@@ -102,14 +102,14 @@ export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDra
           }))} />
       </Field>
       {draft.reminderEnabled && <>
-        <Field data-invalid={reminderInvalid || undefined}>
+        <Field className="gap-2" data-invalid={reminderInvalid || undefined}>
           <FieldLabel htmlFor="reminder-minutes">Remind me every (minutes)</FieldLabel>
           <Input id="reminder-minutes" type="number" min={1} max={2147483647} step={1}
             aria-invalid={reminderInvalid || undefined}
             value={Number.isNaN(draft.reminderIntervalMinutes) ? "" : draft.reminderIntervalMinutes}
             aria-describedby="reminder-minutes-hint"
             onChange={event => setDraft(current => ({ ...current, reminderIntervalMinutes: event.target.valueAsNumber }))} />
-          <FieldDescription id="reminder-minutes-hint">Enter a positive whole number of minutes. Waiting time does not count.</FieldDescription>
+          <FieldDescription id="reminder-minutes-hint" className="sr-only">Enter a positive whole number of minutes. Waiting time does not count.</FieldDescription>
         </Field>
         {!services.loading && !services.error && !services.data.notifications && <Alert><AlertDescription>
           Notifications are disabled. Enable them to receive session reminders; your waiting pauses still work.
@@ -146,10 +146,10 @@ function TimeBlock({ label, hint, h, m, s, onChange }: {
   }
 
   return (
-    <FieldSet className="min-w-0 rounded-xl border p-4">
-      <FieldLegend>{label}</FieldLegend>
+    <FieldSet className="min-w-0 gap-2 rounded-xl border p-3">
+      <FieldLegend className="mb-1">{label}</FieldLegend>
       <FieldDescription>{hint}</FieldDescription>
-      <FieldGroup className="grid grid-cols-3 gap-3">
+      <FieldGroup className="grid grid-cols-3 gap-2">
         <NumberField label="Hours" value={values.h} max={23} onChange={(value) => change("h", value)} />
         <NumberField label="Minutes" value={values.m} max={59} onChange={(value) => change("m", value)} />
         <NumberField label="Seconds" value={values.s} min={Number(values.h) === 0 && Number(values.m) === 0 ? 1 : 0} max={59} onChange={(value) => change("s", value)} />
@@ -164,12 +164,12 @@ function NumberField({ label, value, min = 0, max, onChange }: {
   const id = useId()
   const invalid = value.trim() === "" || !Number.isInteger(Number(value)) || Number(value) < min || Number(value) > max
   return (
-    <Field className="min-w-0" data-invalid={invalid}>
+    <Field className="min-w-0 gap-1" data-invalid={invalid}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Input id={id} type="number" inputMode="numeric" required min={min} max={max} step={1} value={value}
         aria-invalid={invalid} aria-describedby={`${id}-hint${invalid ? ` ${id}-error` : ""}`}
         onFocus={(e) => e.currentTarget.select()} onChange={(e) => onChange(e.target.value)} />
-      <FieldDescription id={`${id}-hint`}>{min}–{max}</FieldDescription>
+      <FieldDescription id={`${id}-hint`} className="sr-only">{min}–{max}</FieldDescription>
       {invalid && <FieldError id={`${id}-error`}>Enter a whole number from {min} to {max}.</FieldError>}
     </Field>
   )
@@ -177,13 +177,13 @@ function NumberField({ label, value, min = 0, max, onChange }: {
 
 export function StageMessages({ draft, setDraft }: { draft: FrictionAppDraft; setDraft: DraftSetter }) {
   return (
-    <FieldGroup>
+    <FieldGroup className="gap-3">
       <div className="flex flex-col gap-1">
         <h3 className="font-semibold">Friction messages</h3>
-        <p className="text-sm text-muted-foreground">Shown during the countdown. Add a few gentle reminders to rotate through.</p>
+        <p className="text-sm text-muted-foreground">Gentle reminders shown during the countdown.</p>
       </div>
       {draft.messages.map((message, index) => (
-        <Field key={index}>
+        <Field key={index} className="gap-2">
           <div className="flex items-center justify-between gap-2">
             <FieldLabel htmlFor={`message-${index}`}>Message {index + 1}</FieldLabel>
             <Button type="button" variant="ghost" size="icon" aria-label={`Remove message ${index + 1}`} onClick={() =>
@@ -210,6 +210,6 @@ function MessageField({ id, value, onChange }: { id: string; value: string; onCh
     element.style.height = "auto"
     element.style.height = `${element.scrollHeight + 2}px`
   }, [value])
-  return <Textarea id={id} ref={ref} rows={3} value={value} onChange={(e) => onChange(e.target.value)}
+  return <Textarea id={id} ref={ref} rows={2} value={value} onChange={(e) => onChange(e.target.value)}
     placeholder="A gentle nudge…" className="min-w-0 resize-none overflow-hidden wrap-anywhere" />
 }
