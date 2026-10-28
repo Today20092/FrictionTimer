@@ -43,6 +43,7 @@ export function applyDefaultsToDraft(draft: FrictionAppDraft, defaults: Friction
     ...draft,
     ...(defaults.waitSeconds === undefined ? {} : { waitSeconds: defaults.waitSeconds }),
     ...(defaults.durationSeconds === undefined ? {} : { durationSeconds: defaults.durationSeconds }),
+    ...(defaults.returnGraceSeconds === undefined ? {} : { returnGraceSeconds: defaults.returnGraceSeconds }),
     ...(defaults.messages === undefined ? {} : { messages: [...defaults.messages] }),
     ...(defaults.sessionReminders === undefined ? {} : {
       reminderEnabled: defaults.sessionReminders.enabled,

@@ -20,6 +20,12 @@ Tap a recommendation to open setup. Its row is selected and brought into view. N
 
 Choose the waiting time, session duration, and messages. A finite duration sets how long the app stays unlocked. With unlimited duration, returning within the **Return window (seconds)** skips another wait, so you can briefly switch apps to copy something or multitask. Set this separately for each app in its Timing step. The default is 30 seconds; use 0 to disable it, or choose a whole number up to 2,147,483,647 seconds. Existing saved apps receive the 30-second default when updated. Turning off the screen clears return windows. The window starts after you complete the wait and leave the app; leaving an unfinished countdown does not unlock it. The editor keeps Cancel/Next/Save reachable, with scrolling inside long lists or content when necessary.
 
+## Manage defaults
+
+Open **Manage defaults** to choose which settings new apps inherit. Enable **Use a default return window** and enter the seconds below it; 0 requires a new wait after leaving. Return windows apply to unlimited sessions. You can copy the value from a saved app and save it alongside your other defaults.
+
+Saving defaults does not change existing apps. Select the apps under **Apply to existing apps**, then confirm applying the saved settings. Unticked defaults leave those settings unchanged, so you can apply just the return window without changing waits, durations, messages, or reminders. Existing defaults are preserved when updating to v2.3.1; the new return-window default stays unticked until you choose it.
+
 ## Session reminders
 
 Reminders are off by default for every app. Enable them individually and choose a positive whole-minute interval; the initial value is 10 minutes.

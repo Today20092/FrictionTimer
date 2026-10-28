@@ -9,12 +9,13 @@ import { applyAppDefaults, setAppDefaults, useAppDefaults, useApps, type Frictio
 import { DEFAULT_DRAFT, applyDefaultsToDraft, draftFromApp, hmsToSeconds, secondsToHMS } from "@/components/app-form/utils"
 import { StageMessages, TimeBlock } from "@/components/app-form/stages"
 
-type DefaultField = "wait" | "duration" | "messages" | "reminders"
+type DefaultField = "wait" | "duration" | "returnWindow" | "messages" | "reminders"
 type EnabledFields = Record<DefaultField, boolean>
 
 const FIELD_LABELS: Record<DefaultField, string> = {
   wait: "Wait time",
   duration: "Duration",
+  returnWindow: "Return window",
   messages: "Countdown messages",
   reminders: "Session reminders",
 }
@@ -23,6 +24,7 @@ function enabledFromDefaults(defaults: FrictionAppDefaults): EnabledFields {
   return {
     wait: defaults.waitSeconds !== undefined,
     duration: defaults.durationSeconds !== undefined,
+    returnWindow: defaults.returnGraceSeconds !== undefined,
     messages: defaults.messages !== undefined,
     reminders: defaults.sessionReminders !== undefined,
   }
@@ -32,6 +34,7 @@ function fieldsFromDefaults(defaults: FrictionAppDefaults): FrictionAppDefaults 
   return {
     ...(defaults.waitSeconds === undefined ? {} : { waitSeconds: defaults.waitSeconds }),
     ...(defaults.durationSeconds === undefined ? {} : { durationSeconds: defaults.durationSeconds }),
+    ...(defaults.returnGraceSeconds === undefined ? {} : { returnGraceSeconds: defaults.returnGraceSeconds }),
     ...(defaults.messages === undefined ? {} : { messages: defaults.messages }),
     ...(defaults.sessionReminders === undefined ? {} : { sessionReminders: defaults.sessionReminders }),
   }
@@ -41,6 +44,7 @@ function selectedDefaults(draft: FrictionAppDraft, enabled: EnabledFields): Fric
   return {
     ...(enabled.wait ? { waitSeconds: draft.waitSeconds } : {}),
     ...(enabled.duration ? { durationSeconds: draft.durationSeconds } : {}),
+    ...(enabled.returnWindow ? { returnGraceSeconds: draft.returnGraceSeconds } : {}),
     ...(enabled.messages ? { messages: draft.messages } : {}),
     ...(enabled.reminders ? { sessionReminders: {
       enabled: draft.reminderEnabled,
@@ -50,11 +54,10 @@ function selectedDefaults(draft: FrictionAppDraft, enabled: EnabledFields): Fric
 }
 
 function validDefaults(defaults: FrictionAppDefaults) {
-  return defaults.waitSeconds === undefined || (Number.isInteger(defaults.waitSeconds) && defaults.waitSeconds >= 1)
-    ? defaults.durationSeconds === undefined || (Number.isInteger(defaults.durationSeconds) && defaults.durationSeconds >= 0)
-      ? defaults.sessionReminders === undefined || (Number.isInteger(defaults.sessionReminders.intervalMinutes) && defaults.sessionReminders.intervalMinutes >= 1 && defaults.sessionReminders.intervalMinutes <= 2147483647)
-      : false
-    : false
+  return (defaults.waitSeconds === undefined || (Number.isInteger(defaults.waitSeconds) && defaults.waitSeconds >= 1))
+    && (defaults.durationSeconds === undefined || (Number.isInteger(defaults.durationSeconds) && defaults.durationSeconds >= 0))
+    && (defaults.returnGraceSeconds === undefined || (Number.isInteger(defaults.returnGraceSeconds) && defaults.returnGraceSeconds >= 0 && defaults.returnGraceSeconds <= 2147483647))
+    && (defaults.sessionReminders === undefined || (Number.isInteger(defaults.sessionReminders.intervalMinutes) && defaults.sessionReminders.intervalMinutes >= 1 && defaults.sessionReminders.intervalMinutes <= 2147483647))
 }
 
 export function DefaultsManager({ onBack }: { onBack: () => void }) {
@@ -62,7 +65,7 @@ export function DefaultsManager({ onBack }: { onBack: () => void }) {
   const stored = useAppDefaults()
   const initialized = useRef(false)
   const [draft, setDraft] = useState<FrictionAppDraft>(DEFAULT_DRAFT)
-  const [enabled, setEnabled] = useState<EnabledFields>({ wait: false, duration: false, messages: false, reminders: false })
+  const [enabled, setEnabled] = useState<EnabledFields>({ wait: false, duration: false, returnWindow: false, messages: false, reminders: false })
   const [sourceAppId, setSourceAppId] = useState("")
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
@@ -82,6 +85,7 @@ export function DefaultsManager({ onBack }: { onBack: () => void }) {
   const outgoingDefaults = selectedDefaults(draft, enabled)
   const settingsDirty = JSON.stringify(outgoingDefaults) !== JSON.stringify(activeDefaults)
   const remindersInvalid = enabled.reminders && (!Number.isInteger(draft.reminderIntervalMinutes) || draft.reminderIntervalMinutes < 1 || draft.reminderIntervalMinutes > 2147483647)
+  const returnWindowInvalid = enabled.returnWindow && (!Number.isInteger(draft.returnGraceSeconds) || draft.returnGraceSeconds < 0 || draft.returnGraceSeconds > 2147483647)
   const saveDisabled = stored.loading || !!stored.error || saving || !validDefaults(outgoingDefaults) || remindersInvalid
   const allSelected = apps.data.length > 0 && selectedIds.length === apps.data.length
 
@@ -128,7 +132,7 @@ export function DefaultsManager({ onBack }: { onBack: () => void }) {
   const targetNames = apps.data.filter(app => selectedIds.includes(app.id)).map(app => app.name)
   const appliedFieldLabels = (Object.keys(FIELD_LABELS) as DefaultField[])
     .filter(field => activeDefaults[
-      field === "wait" ? "waitSeconds" : field === "duration" ? "durationSeconds" : field === "messages" ? "messages" : "sessionReminders"
+      field === "wait" ? "waitSeconds" : field === "duration" ? "durationSeconds" : field === "returnWindow" ? "returnGraceSeconds" : field === "messages" ? "messages" : "sessionReminders"
     ] !== undefined)
     .map(field => FIELD_LABELS[field])
 
@@ -183,6 +187,20 @@ export function DefaultsManager({ onBack }: { onBack: () => void }) {
           </Field>
           {draft.durationSeconds !== 0 && <TimeBlock label="Default duration" hint="Time unlocked. Minimum one second." {...secondsToHMS(draft.durationSeconds)}
             onChange={(h, m, s) => setDraft(current => ({ ...current, durationSeconds: hmsToSeconds(h, m, s) }))} />}
+
+          <Field orientation="horizontal" className="rounded-xl border p-3">
+            <FieldContent><FieldLabel htmlFor="default-return-window">Use a default return window</FieldLabel></FieldContent>
+            <Switch id="default-return-window" checked={enabled.returnWindow} onCheckedChange={returnWindow => setEnabled(current => ({ ...current, returnWindow }))} />
+          </Field>
+          <Field className="gap-2" data-invalid={returnWindowInvalid || undefined}>
+            <FieldLabel htmlFor="default-return-seconds">Default return window (seconds)</FieldLabel>
+            <Input id="default-return-seconds" type="number" min={0} max={2147483647} step={1}
+              value={Number.isNaN(draft.returnGraceSeconds) ? "" : draft.returnGraceSeconds}
+              aria-invalid={returnWindowInvalid || undefined} aria-describedby="default-return-hint"
+              onChange={event => setDraft(current => ({ ...current, returnGraceSeconds: event.target.valueAsNumber }))} />
+            <FieldDescription id="default-return-hint">For unlimited sessions. Set 0 to require a new wait after leaving.</FieldDescription>
+            {returnWindowInvalid && <FieldDescription>Enter a whole number from 0 to 2,147,483,647 seconds.</FieldDescription>}
+          </Field>
 
           <Field orientation="horizontal" className="rounded-xl border p-3">
             <FieldContent><FieldLabel htmlFor="default-messages">Use default countdown messages</FieldLabel></FieldContent>

@@ -41,6 +41,7 @@ export async function mockNativeBridge(page: Page, firstRun = false) {
           const defaults = input.defaults;
           if (defaults.waitSeconds !== undefined) app.waitSeconds = defaults.waitSeconds;
           if (defaults.durationSeconds !== undefined) app.durationSeconds = defaults.durationSeconds;
+          if (defaults.returnGraceSeconds !== undefined) app.returnGraceSeconds = defaults.returnGraceSeconds;
           if (defaults.messages !== undefined) app.messages = [...defaults.messages];
           if (defaults.sessionReminders !== undefined) {
             app.reminderEnabled = defaults.sessionReminders.enabled;

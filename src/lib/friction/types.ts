@@ -30,6 +30,7 @@ export type FrictionAppDraft = Omit<FrictionApp, "id">;
 export type FrictionAppDefaults = {
   waitSeconds?: number;
   durationSeconds?: number;
+  returnGraceSeconds?: number;
   messages?: string[];
   sessionReminders?: { enabled: boolean; intervalMinutes: number };
 };

@@ -1,0 +1,82 @@
+import { expect, test } from "@playwright/test";
+import { mockNativeBridge, savedApp } from "./native-bridge";
+
+test("return window can be copied, validated, saved and inherited by new apps", async ({ page }) => {
+  const native = await mockNativeBridge(page);
+  native.apps[0].returnGraceSeconds = 45;
+  await page.setViewportSize({ width: 384, height: 783 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Manage defaults" }).click();
+  const toggle = page.getByRole("switch", { name: "Use a default return window", exact: true });
+  const seconds = page.getByLabel("Default return window (seconds)");
+  const save = page.getByRole("button", { name: "Save defaults", exact: true });
+  await expect(toggle).not.toBeChecked();
+  await page.getByLabel("Copy values from a saved app").selectOption("saved-app");
+  await expect(seconds).toHaveValue("45");
+  await toggle.check();
+  for (const invalid of ["", "-1", "1.5", "2147483648"]) {
+    await seconds.fill(invalid);
+    await expect(seconds).toHaveAttribute("aria-invalid", "true");
+    await expect(save).toBeDisabled();
+  }
+  await toggle.uncheck();
+  await expect(save).toBeEnabled();
+  await toggle.check();
+  await seconds.fill("20");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: test.info().outputPath("return-window-defaults.png"), fullPage: true });
+  await save.click();
+  await expect(save).toBeEnabled();
+  expect(native.defaults).toEqual({ returnGraceSeconds: 20 });
+  expect(native.apps[0].returnGraceSeconds).toBe(45);
+  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await page.getByRole("button", { name: "Manage defaults" }).click();
+  await expect(toggle).toBeChecked();
+  await expect(seconds).toHaveValue("20");
+  await seconds.fill("60");
+  await page.getByRole("button", { name: "Discard edits" }).click();
+  await expect(seconds).toHaveValue("20");
+  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await page.getByRole("link", { name: "Instagram", exact: true }).click();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("switch", { name: "Unlimited duration", exact: true }).check();
+  await expect(page.getByLabel("Return window (seconds)", { exact: true })).toHaveValue("20");
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(page).toHaveURL("/");
+  expect(native.apps.find(app => app.appId === "com.instagram.android")?.returnGraceSeconds).toBe(20);
+});
+
+test("zero return default applies only to selected apps and unticking preserves existing windows", async ({ page }) => {
+  const native = await mockNativeBridge(page);
+  native.apps.push({ ...savedApp, id: "notes", appId: "com.example.notes", name: "Notes", returnGraceSeconds: 60 });
+  native.defaults = { returnGraceSeconds: 0 };
+  await page.goto("/");
+  await page.getByRole("button", { name: "Manage defaults" }).click();
+  const toggle = page.getByRole("switch", { name: "Use a default return window", exact: true });
+  await expect(toggle).toBeChecked();
+  await expect(page.getByLabel("Default return window (seconds)")).toHaveValue("0");
+  await page.getByRole("switch", { name: "Reader", exact: true }).check();
+  const apply = page.getByRole("button", { name: "Apply to 1 app", exact: true });
+  await apply.click();
+  const dialog = page.getByRole("alertdialog", { name: "Apply defaults to 1 app?" });
+  await expect(dialog).toContainText("Return window");
+  await dialog.getByRole("button", { name: "Apply settings" }).click();
+  await expect(page.getByText("Updated 1 app.")).toBeVisible();
+  expect(native.apps[0]).toEqual({ ...savedApp, returnGraceSeconds: 0 });
+  expect(native.apps[1].returnGraceSeconds).toBe(60);
+
+  await toggle.uncheck();
+  await page.getByRole("switch", { name: "Use a default wait time", exact: true }).check();
+  await page.getByRole("group", { name: "Default wait time" }).getByLabel("Seconds").fill("12");
+  const save = page.getByRole("button", { name: "Save defaults", exact: true });
+  await save.click();
+  await expect(save).toBeEnabled();
+  expect(native.defaults).toEqual({ waitSeconds: 12 });
+  await apply.click();
+  await expect(dialog).not.toContainText("Return window");
+  await dialog.getByRole("button", { name: "Apply settings" }).click();
+  await expect(page.getByText("Updated 1 app.")).toBeVisible();
+  expect(native.apps[0]).toMatchObject({ waitSeconds: 12, returnGraceSeconds: 0 });
+  expect(native.apps[1]).toMatchObject({ waitSeconds: 20, returnGraceSeconds: 60 });
+});
