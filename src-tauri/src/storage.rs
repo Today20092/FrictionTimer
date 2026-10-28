@@ -28,6 +28,7 @@ pub struct FrictionApp {
     pub name: String,
     pub wait_seconds: i64,
     pub duration_seconds: i64,
+    pub return_grace_seconds: i64,
     pub messages: Vec<String>,
     pub reminder_enabled: bool,
     pub reminder_interval_minutes: i64,
@@ -40,6 +41,8 @@ pub struct CreateAppInput {
     pub name: String,
     pub wait_seconds: i64,
     pub duration_seconds: i64,
+    #[serde(default = "default_return_grace_seconds")]
+    pub return_grace_seconds: i64,
     pub messages: Vec<String>,
     #[serde(default)]
     pub reminder_enabled: bool,
@@ -54,16 +57,26 @@ pub struct UpdateAppInput {
     pub name: Option<String>,
     pub wait_seconds: Option<i64>,
     pub duration_seconds: Option<i64>,
+    pub return_grace_seconds: Option<i64>,
     pub messages: Option<Vec<String>>,
     pub reminder_enabled: Option<bool>,
     pub reminder_interval_minutes: Option<i64>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionReminderDefaults {
     pub enabled: bool,
     pub interval_minutes: i64,
+}
+
+impl Default for SessionReminderDefaults {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            interval_minutes: default_reminder_interval(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -143,7 +156,8 @@ pub fn initialize_database(db_path: &Path) -> Result<(), StorageError> {
             duration_seconds INTEGER NOT NULL,
             messages_json TEXT NOT NULL,
             reminder_enabled INTEGER NOT NULL DEFAULT 0,
-            reminder_interval_minutes INTEGER NOT NULL DEFAULT 10
+            reminder_interval_minutes INTEGER NOT NULL DEFAULT 10,
+            return_grace_seconds INTEGER NOT NULL DEFAULT 30
         );
         CREATE TABLE IF NOT EXISTS friction_app_defaults (
             id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -173,6 +187,14 @@ pub fn initialize_database(db_path: &Path) -> Result<(), StorageError> {
     {
         transaction.execute_batch("ALTER TABLE friction_apps ADD COLUMN reminder_interval_minutes INTEGER NOT NULL DEFAULT 10")?;
     }
+    if !columns
+        .iter()
+        .any(|column| column == "return_grace_seconds")
+    {
+        transaction.execute_batch(
+            "ALTER TABLE friction_apps ADD COLUMN return_grace_seconds INTEGER NOT NULL DEFAULT 30",
+        )?;
+    }
     transaction.commit()?;
 
     Ok(())
@@ -181,7 +203,7 @@ pub fn initialize_database(db_path: &Path) -> Result<(), StorageError> {
 pub fn list_apps(db_path: &Path) -> Result<Vec<FrictionApp>, StorageError> {
     let conn = open_connection(db_path)?;
     let mut stmt = conn.prepare(
-        "SELECT id, app_id, name, wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes
+        "SELECT id, app_id, name, wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes, return_grace_seconds
          FROM friction_apps
          ORDER BY rowid ASC",
     )?;
@@ -195,7 +217,7 @@ pub fn get_app(db_path: &Path, id: &str) -> Result<Option<FrictionApp>, StorageE
     let conn = open_connection(db_path)?;
     let app = conn
         .query_row(
-            "SELECT id, app_id, name, wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes
+            "SELECT id, app_id, name, wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes, return_grace_seconds
              FROM friction_apps
              WHERE id = ?1",
             [id],
@@ -212,8 +234,8 @@ pub fn create_app(db_path: &Path, input: CreateAppInput) -> Result<FrictionApp, 
 
     conn.execute(
         "INSERT INTO friction_apps
-            (id, app_id, name, wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            (id, app_id, name, wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes, return_grace_seconds)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         params![
             app.id,
             app.app_id,
@@ -223,6 +245,7 @@ pub fn create_app(db_path: &Path, input: CreateAppInput) -> Result<FrictionApp, 
             serde_json::to_string(&app.messages)?,
             app.reminder_enabled,
             app.reminder_interval_minutes,
+            app.return_grace_seconds,
         ],
     )?;
 
@@ -242,7 +265,7 @@ pub fn update_app(
     conn.execute(
         "UPDATE friction_apps
          SET app_id = ?2, name = ?3, wait_seconds = ?4, duration_seconds = ?5, messages_json = ?6,
-             reminder_enabled = ?7, reminder_interval_minutes = ?8
+             reminder_enabled = ?7, reminder_interval_minutes = ?8, return_grace_seconds = ?9
          WHERE id = ?1",
         params![
             next.id,
@@ -253,6 +276,7 @@ pub fn update_app(
             serde_json::to_string(&next.messages)?,
             next.reminder_enabled,
             next.reminder_interval_minutes,
+            next.return_grace_seconds,
         ],
     )?;
 
@@ -373,7 +397,7 @@ fn open_connection(db_path: &Path) -> Result<Connection, StorageError> {
 
 fn map_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<FrictionApp> {
     let messages_json: String = row.get(5)?;
-    let messages = serde_json::from_str(&messages_json).map_err(to_sql_error)?;
+    let messages = serde_json::from_str(&messages_json).map_err(|err| to_sql_error(5, err))?;
 
     Ok(FrictionApp {
         id: row.get(0)?,
@@ -381,6 +405,7 @@ fn map_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<FrictionApp> {
         name: row.get(2)?,
         wait_seconds: row.get(3)?,
         duration_seconds: row.get(4)?,
+        return_grace_seconds: row.get(8)?,
         messages,
         reminder_enabled: row.get(6)?,
         reminder_interval_minutes: row.get(7)?,
@@ -403,7 +428,7 @@ fn map_defaults_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<FrictionAppDefa
         wait_seconds: row.get(0)?,
         duration_seconds: row.get(1)?,
         messages: messages_json
-            .map(|json| serde_json::from_str(&json).map_err(to_sql_error))
+            .map(|json| serde_json::from_str(&json).map_err(|err| to_sql_error(2, err)))
             .transpose()?,
         session_reminders,
     })
@@ -428,11 +453,12 @@ fn normalize_defaults(
 }
 
 fn normalize_create_input(input: CreateAppInput) -> Result<FrictionApp, StorageError> {
-    let id = uuid();
+    let id = Uuid::new_v4().to_string();
     let app_id = validate_required("appId", input.app_id)?;
     let name = validate_required("name", input.name)?;
     let wait_seconds = validate_seconds("waitSeconds", input.wait_seconds)?;
     let duration_seconds = validate_duration(input.duration_seconds)?;
+    let return_grace_seconds = validate_return_grace(input.return_grace_seconds)?;
     let messages = normalize_messages(input.messages);
     let reminder_interval_minutes = validate_reminder_interval(input.reminder_interval_minutes)?;
 
@@ -442,6 +468,7 @@ fn normalize_create_input(input: CreateAppInput) -> Result<FrictionApp, StorageE
         name,
         wait_seconds,
         duration_seconds,
+        return_grace_seconds,
         messages,
         reminder_enabled: input.reminder_enabled,
         reminder_interval_minutes,
@@ -469,6 +496,10 @@ fn apply_patch(current: FrictionApp, patch: UpdateAppInput) -> Result<FrictionAp
         Some(values) => normalize_messages(values),
         None => current.messages,
     };
+    let return_grace_seconds = match patch.return_grace_seconds {
+        Some(value) => validate_return_grace(value)?,
+        None => current.return_grace_seconds,
+    };
     let reminder_interval_minutes = match patch.reminder_interval_minutes {
         Some(value) => validate_reminder_interval(value)?,
         None => current.reminder_interval_minutes,
@@ -480,6 +511,7 @@ fn apply_patch(current: FrictionApp, patch: UpdateAppInput) -> Result<FrictionAp
         name,
         wait_seconds,
         duration_seconds,
+        return_grace_seconds,
         messages,
         reminder_enabled: patch.reminder_enabled.unwrap_or(current.reminder_enabled),
         reminder_interval_minutes,
@@ -498,6 +530,19 @@ fn validate_required(field: &str, value: String) -> Result<String, StorageError>
 
 fn default_reminder_interval() -> i64 {
     10
+}
+
+fn default_return_grace_seconds() -> i64 {
+    30
+}
+
+fn validate_return_grace(value: i64) -> Result<i64, StorageError> {
+    if !(0..=i64::from(i32::MAX)).contains(&value) {
+        return Err(StorageError::Validation(
+            "returnGraceSeconds must be a whole number between 0 and 2147483647".into(),
+        ));
+    }
+    Ok(value)
 }
 
 fn validate_reminder_interval(value: i64) -> Result<i64, StorageError> {
@@ -534,12 +579,12 @@ fn validate_duration(value: i64) -> Result<i64, StorageError> {
     validate_seconds("durationSeconds", value)
 }
 
-fn to_sql_error(err: serde_json::Error) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(5, rusqlite::types::Type::Text, Box::new(err))
-}
-
-fn uuid() -> String {
-    Uuid::new_v4().to_string()
+fn to_sql_error(column_index: usize, err: serde_json::Error) -> rusqlite::Error {
+    rusqlite::Error::FromSqlConversionFailure(
+        column_index,
+        rusqlite::types::Type::Text,
+        Box::new(err),
+    )
 }
 
 #[cfg(test)]
@@ -562,6 +607,7 @@ mod tests {
             name: " Instagram ".into(),
             wait_seconds: 30,
             duration_seconds: 300,
+            return_grace_seconds: 30,
             reminder_enabled: false,
             reminder_interval_minutes: 10,
             messages: vec![
@@ -570,6 +616,43 @@ mod tests {
                 "Do you need this?".into(),
             ],
         }
+    }
+
+    #[test]
+    fn reminder_default_is_valid_and_uses_the_configured_initial_interval() {
+        let reminders = SessionReminderDefaults::default();
+        assert!(!reminders.enabled, "Session reminders should be opt-in");
+        assert_eq!(reminders.interval_minutes, 10);
+        normalize_defaults(FrictionAppDefaults {
+            session_reminders: Some(reminders),
+            ..FrictionAppDefaults::default()
+        })
+        .expect("Default reminder settings must pass persistence validation");
+    }
+
+    #[test]
+    fn malformed_message_json_reports_the_actual_database_column() {
+        let conn = Connection::open_in_memory().expect("Open test database");
+        let app_error = conn
+            .query_row("SELECT 'id', 'app', 'Name', 1, 0, '{', 0, 10", [], map_row)
+            .expect_err("Malformed app messages must fail to load");
+        assert!(
+            matches!(
+                app_error,
+                rusqlite::Error::FromSqlConversionFailure(5, _, _)
+            ),
+            "Wrong app column: {app_error:?}"
+        );
+        let defaults_error = conn
+            .query_row("SELECT NULL, NULL, '{', NULL, NULL", [], map_defaults_row)
+            .expect_err("Malformed default messages must fail to load");
+        assert!(
+            matches!(
+                defaults_error,
+                rusqlite::Error::FromSqlConversionFailure(2, _, _)
+            ),
+            "Wrong defaults column: {defaults_error:?}"
+        );
     }
 
     #[test]
@@ -617,9 +700,72 @@ mod tests {
             let app = get_app(&db_path, "old").unwrap().unwrap();
             assert!(!app.reminder_enabled);
             assert_eq!(app.reminder_interval_minutes, 10);
+            assert_eq!(app.return_grace_seconds, 30);
             assert_eq!(app.wait_seconds, 30);
             assert_eq!(app.messages, vec!["Keep focused"]);
         }
+        let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn return_window_round_trips_and_rejects_invalid_updates() {
+        let db_path = temp_db_path("return-window");
+        let input = serde_json::from_value(serde_json::json!({
+            "appId": "com.example", "name": "Example", "waitSeconds": 1,
+            "durationSeconds": 0, "messages": []
+        }))
+        .expect("Existing command payloads remain valid");
+        let created = create_app(&db_path, input).expect("Create app");
+        assert_eq!(created.return_grace_seconds, 30);
+        for seconds in [0, 20, 60, i64::from(i32::MAX)] {
+            let patch =
+                serde_json::from_value(serde_json::json!({ "returnGraceSeconds": seconds }))
+                    .expect("Deserialize return window update");
+            update_app(&db_path, &created.id, patch).expect("Save return window");
+            initialize_database(&db_path).expect("Migration must preserve a saved return window");
+            let fetched = get_app(&db_path, &created.id)
+                .expect("Load app")
+                .expect("App exists");
+            assert_eq!(fetched.return_grace_seconds, seconds);
+            assert_eq!(
+                serde_json::to_value(&fetched).expect("Serialize app")["returnGraceSeconds"],
+                seconds
+            );
+            let patch = serde_json::from_value(serde_json::json!({ "name": "Renamed" }))
+                .expect("Deserialize partial update");
+            assert_eq!(
+                update_app(&db_path, &created.id, patch)
+                    .expect("Rename app")
+                    .return_grace_seconds,
+                seconds
+            );
+        }
+        for seconds in [-1, i64::from(i32::MAX) + 1] {
+            let error = create_app(
+                &db_path,
+                CreateAppInput {
+                    return_grace_seconds: seconds,
+                    ..sample_input()
+                },
+            )
+            .expect_err("Invalid return window must not create an app");
+            assert!(error.to_string().contains("returnGraceSeconds"));
+            let patch =
+                serde_json::from_value(serde_json::json!({ "returnGraceSeconds": seconds }))
+                    .expect("Deserialize integer patch");
+            assert!(update_app(&db_path, &created.id, patch).is_err());
+            assert_eq!(
+                get_app(&db_path, &created.id)
+                    .expect("Load unchanged app")
+                    .expect("App exists")
+                    .return_grace_seconds,
+                i64::from(i32::MAX)
+            );
+        }
+        assert!(serde_json::from_value::<UpdateAppInput>(
+            serde_json::json!({ "returnGraceSeconds": 1.5 })
+        )
+        .is_err());
         let _ = fs::remove_file(db_path);
     }
 
@@ -752,6 +898,7 @@ mod tests {
                 name: Some(" Reddit ".into()),
                 wait_seconds: Some(15),
                 duration_seconds: None,
+                return_grace_seconds: None,
                 messages: Some(vec![" Stay focused ".into(), "".into()]),
                 reminder_enabled: None,
                 reminder_interval_minutes: None,
@@ -866,6 +1013,7 @@ mod tests {
                     name: None,
                     wait_seconds: None,
                     duration_seconds: Some(duration),
+                    return_grace_seconds: None,
                     messages: None,
                     reminder_enabled: None,
                     reminder_interval_minutes: None,
@@ -888,6 +1036,7 @@ mod tests {
                 name: "First".into(),
                 wait_seconds: 10,
                 duration_seconds: 20,
+                return_grace_seconds: 30,
                 messages: vec![],
                 reminder_enabled: false,
                 reminder_interval_minutes: 10,
@@ -901,6 +1050,7 @@ mod tests {
                 name: "Second".into(),
                 wait_seconds: 30,
                 duration_seconds: 40,
+                return_grace_seconds: 30,
                 messages: vec![],
                 reminder_enabled: false,
                 reminder_interval_minutes: 10,

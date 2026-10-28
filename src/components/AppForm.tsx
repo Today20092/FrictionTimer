@@ -39,10 +39,11 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
       .map((app) => app.appId),
   )
   const appAlreadyCovered = draft.appId !== initial?.appId && coveredAppIds.has(draft.appId)
+  const returnGraceInvalid = !Number.isInteger(draft.returnGraceSeconds) || draft.returnGraceSeconds < 0 || draft.returnGraceSeconds > 2147483647
   const reminderInvalid = !Number.isInteger(draft.reminderIntervalMinutes) || draft.reminderIntervalMinutes < 1 || draft.reminderIntervalMinutes > 2147483647
 
   async function save() {
-    if (!draft.appId || appAlreadyCovered || reminderInvalid || mutations.saving || (!initial && (defaults.loading || defaults.error))) return
+    if (!draft.appId || appAlreadyCovered || reminderInvalid || returnGraceInvalid || mutations.saving || (!initial && (defaults.loading || defaults.error))) return
     const clean = sanitizeDraft(draft)
 
     try {
@@ -68,7 +69,7 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
   return (
     <form className="flex min-h-0 min-w-0 flex-1 flex-col gap-3" onSubmit={(event) => {
       event.preventDefault()
-      if (!draft.appId || appAlreadyCovered || (stage !== 0 && reminderInvalid) || mutations.saving || (!initial && (defaults.loading || defaults.error))) return
+      if (!draft.appId || appAlreadyCovered || (stage !== 0 && (reminderInvalid || returnGraceInvalid)) || mutations.saving || (!initial && (defaults.loading || defaults.error))) return
       if (stage < 2) setStage((stage + 1) as Stage)
       else void save()
     }}>
@@ -101,6 +102,9 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
         </AlertDescription></Alert>}
         {reminderInvalid && <Alert variant="destructive"><AlertDescription>
           Enter a whole number from 1 to 2,147,483,647 minutes for session reminders.
+        </AlertDescription></Alert>}
+        {returnGraceInvalid && <Alert variant="destructive"><AlertDescription>
+          Enter a whole number from 0 to 2,147,483,647 seconds for the return window.
         </AlertDescription></Alert>}
 
         {mutations.error && !confirmDelete && (
@@ -155,14 +159,14 @@ export function AppForm({ initial, suggestedAppId }: { initial?: FrictionApp; su
           {stage < 2 ? (
             <Button
               type="submit"
-              disabled={!draft.appId || appAlreadyCovered || (stage === 1 && reminderInvalid) || (!initial && (defaults.loading || !!defaults.error))}
+              disabled={!draft.appId || appAlreadyCovered || (stage === 1 && (reminderInvalid || returnGraceInvalid)) || (!initial && (defaults.loading || !!defaults.error))}
             >
               Next →
             </Button>
           ) : (
             <Button
               type="submit"
-              disabled={mutations.saving || appAlreadyCovered || reminderInvalid || (!initial && (defaults.loading || !!defaults.error))}
+              disabled={mutations.saving || appAlreadyCovered || reminderInvalid || returnGraceInvalid || (!initial && (defaults.loading || !!defaults.error))}
             >
               {mutations.saving ? "Saving…" : isEdit ? "Save" : "Create"}
             </Button>

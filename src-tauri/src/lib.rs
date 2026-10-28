@@ -3,8 +3,6 @@ mod permissions;
 mod storage;
 mod theme;
 
-use installed_apps::list_installed_apps;
-use permissions::{get_service_status, open_service_settings};
 use storage::{
     AppState, ApplyAppDefaultsInput, CreateAppInput, FrictionApp, FrictionAppDefaults,
     UpdateAppInput,
@@ -84,9 +82,9 @@ pub fn run() {
             get_app_defaults,
             set_app_defaults,
             apply_app_defaults,
-            list_installed_apps,
-            get_service_status,
-            open_service_settings,
+            installed_apps::list_installed_apps,
+            permissions::get_service_status,
+            permissions::open_service_settings,
             theme::get_system_theme
         ])
         .run(tauri::generate_context!())

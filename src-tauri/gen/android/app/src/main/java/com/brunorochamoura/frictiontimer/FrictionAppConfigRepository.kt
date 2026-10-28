@@ -41,6 +41,8 @@ class FrictionAppConfigRepository(private val context: Context) {
           name = cursor.getString(cursor.getColumnIndexOrThrow("name")),
           waitSeconds = waitSeconds,
           durationSeconds = durationSeconds,
+          returnGraceSeconds = cursor.getColumnIndex("return_grace_seconds")
+            .let { if (it >= 0) cursor.getLong(it).coerceIn(0L, Int.MAX_VALUE.toLong()) else 30L },
           messages = parseMessages(cursor.getString(cursor.getColumnIndexOrThrow("messages_json"))),
           reminderEnabled = cursor.getColumnIndex("reminder_enabled").let { it >= 0 && cursor.getInt(it) != 0 },
           reminderIntervalMinutes = cursor.getColumnIndex("reminder_interval_minutes")

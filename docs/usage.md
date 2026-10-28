@@ -18,7 +18,7 @@ Recommended apps are installed feed apps you have not configured yet. The list c
 
 Tap a recommendation to open setup. Its row is selected and brought into view. Nothing starts blocking until you save. If no recommendations apply, the section is hidden.
 
-Choose the waiting time, session duration, and messages. A finite duration sets how long the app stays unlocked; unlimited duration keeps it unlocked until you leave the app. The editor keeps Cancel/Next/Save reachable, with scrolling inside long lists or content when necessary.
+Choose the waiting time, session duration, and messages. A finite duration sets how long the app stays unlocked. With unlimited duration, returning within the **Return window (seconds)** skips another wait, so you can briefly switch apps to copy something or multitask. Set this separately for each app in its Timing step. The default is 30 seconds; use 0 to disable it, or choose a whole number up to 2,147,483,647 seconds. Existing saved apps receive the 30-second default when updated. Turning off the screen clears return windows. The window starts after you complete the wait and leave the app; leaving an unfinished countdown does not unlock it. The editor keeps Cancel/Next/Save reachable, with scrolling inside long lists or content when necessary.
 
 ## Session reminders
 

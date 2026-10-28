@@ -15,13 +15,20 @@ class FrictionForegroundSessionStateMachine(
   var unlimitedSessionPackage: String? = null
     private set
 
-  fun onUnlimitedSessionStarted(packageName: String) {
+  private data class ReturningSession(val expiresAtMs: Long, val graceMs: Long)
+  private val returningSessions = mutableMapOf<String, ReturningSession>()
+  private var returnGraceMs = 0L
+
+  fun onUnlimitedSessionStarted(packageName: String, returnGraceSeconds: Long = 30L) {
     unlimitedSessionPackage = packageName
+    returnGraceMs = returnGraceSeconds.coerceIn(0L, Int.MAX_VALUE.toLong()) * 1_000L
+    returningSessions.remove(packageName)
     clearPendingExit()
   }
 
   fun onScreenOff() {
     unlimitedSessionPackage = null
+    returningSessions.clear()
     clearPendingExit()
   }
 
@@ -38,10 +45,12 @@ class FrictionForegroundSessionStateMachine(
     clearPendingExit()
   }
 
-  fun onForegroundObserved(packageName: String?): FrictionForegroundTransition {
+  fun onForegroundObserved(packageName: String?, nowMs: Long): FrictionForegroundTransition {
+    returningSessions.entries.removeAll { it.value.expiresAtMs <= nowMs }
     val activePackage = activeOverlayPackage ?: unlimitedSessionPackage
     if (activePackage == null) {
       clearPendingExit()
+      restoreReturningSession(packageName)
       return FrictionForegroundTransition(packageToEvaluateForOverlay = packageName)
     }
 
@@ -62,7 +71,11 @@ class FrictionForegroundSessionStateMachine(
     }
 
     clearPendingExit()
+    unlimitedSessionPackage?.let {
+      if (returnGraceMs > 0L) returningSessions[it] = ReturningSession(nowMs + returnGraceMs, returnGraceMs)
+    }
     unlimitedSessionPackage = null
+    restoreReturningSession(packageName)
     return FrictionForegroundTransition(
       dismissActiveOverlay = activeOverlayPackage != null,
       packageToEvaluateForOverlay = packageName,
@@ -71,6 +84,15 @@ class FrictionForegroundSessionStateMachine(
 
   fun debugState(): String =
     "activeOverlayPackage=$activeOverlayPackage, pendingExitPackage=$pendingExitPackage, pendingExitObservations=$pendingExitObservations"
+
+  private fun restoreReturningSession(packageName: String?) {
+    if (packageName != null) {
+      returningSessions.remove(packageName)?.let {
+        unlimitedSessionPackage = packageName
+        returnGraceMs = it.graceMs
+      }
+    }
+  }
 
   private fun clearPendingExit() {
     pendingExitPackage = null
