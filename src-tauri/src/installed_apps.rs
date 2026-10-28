@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
-use tauri::{
-    plugin::{Builder, TauriPlugin},
-    AppHandle, Manager, Runtime,
-};
+use tauri::plugin::{Builder, TauriPlugin};
+use tauri::{AppHandle, Manager, Runtime};
 
 #[cfg(target_os = "android")]
 use tauri::plugin::PluginHandle;
@@ -25,7 +23,7 @@ pub struct InstalledAppsBridge<R: Runtime> {
 }
 
 impl<R: Runtime> InstalledAppsBridge<R> {
-    fn list_installed_apps(&self, query: Option<String>) -> Result<Vec<InstalledApp>, String> {
+    fn list_installed_apps(&self, query: Option<&str>) -> Result<Vec<InstalledApp>, String> {
         #[cfg(target_os = "android")]
         let apps = self
             .mobile_plugin_handle
@@ -35,7 +33,7 @@ impl<R: Runtime> InstalledAppsBridge<R> {
         #[cfg(not(target_os = "android"))]
         let apps = desktop_installed_apps();
 
-        Ok(filter_apps(apps, query.as_deref()))
+        Ok(filter_apps(apps, query))
     }
 }
 
@@ -63,7 +61,7 @@ pub fn list_installed_apps<R: Runtime>(
     query: Option<String>,
 ) -> Result<Vec<InstalledApp>, String> {
     app.state::<InstalledAppsBridge<R>>()
-        .list_installed_apps(query)
+        .list_installed_apps(query.as_deref())
 }
 
 #[cfg(not(target_os = "android"))]

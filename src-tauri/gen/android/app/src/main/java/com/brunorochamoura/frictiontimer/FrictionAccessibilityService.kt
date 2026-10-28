@@ -118,7 +118,7 @@ class FrictionAccessibilityService : AccessibilityService() {
   private fun handleProceed(config: FrictionAppConfig) {
     if (config.durationSeconds == 0L) {
       runtimeState.setCooldownUntil(config.appId, 0L)
-      foregroundSessionState.onUnlimitedSessionStarted(config.appId)
+      foregroundSessionState.onUnlimitedSessionStarted(config.appId, config.returnGraceSeconds)
     } else {
       runtimeState.setCooldownUntil(
         config.appId,
@@ -153,7 +153,7 @@ class FrictionAccessibilityService : AccessibilityService() {
       "Processing foreground packageHint=${normalizePackageLabel(packageHint)} resolved=${normalizePackageLabel(resolvedPackage)} root=${normalizePackageLabel(rootInActiveWindow?.packageName?.toString())} state=${foregroundSessionState.debugState()}"
     }
 
-    val transition = foregroundSessionState.onForegroundObserved(resolvedPackage)
+    val transition = foregroundSessionState.onForegroundObserved(resolvedPackage, SystemClock.elapsedRealtime())
     if (transition.dismissActiveOverlay) {
       dismissOverlay("confirmed_foreground_exit:${resolvedPackage ?: "<none>"}")
     }
@@ -185,6 +185,9 @@ class FrictionAccessibilityService : AccessibilityService() {
       runtimeState.isInCooldown(packageName, nowMs)
     }
     if (unlocked) {
+      if (config.durationSeconds == 0L) {
+        foregroundSessionState.onUnlimitedSessionStarted(config.appId, config.returnGraceSeconds)
+      }
       startReminder(config)
       return
     }

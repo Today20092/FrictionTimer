@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tauri::{
-    plugin::{Builder, TauriPlugin},
-    AppHandle, Manager, Runtime,
-};
+use tauri::plugin::{Builder, TauriPlugin};
+use tauri::{AppHandle, Manager, Runtime};
 
 #[derive(Serialize, Deserialize)]
 pub struct SystemTheme {

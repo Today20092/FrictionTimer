@@ -75,6 +75,7 @@ export function StageApp({ draft, setDraft, isEdit, coveredAppIds, currentAppId,
 
 export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDraft: DraftSetter }) {
   const services = useServiceStatus()
+  const returnGraceInvalid = !Number.isInteger(draft.returnGraceSeconds) || draft.returnGraceSeconds < 0 || draft.returnGraceSeconds > 2147483647
   const reminderInvalid = !Number.isInteger(draft.reminderIntervalMinutes) || draft.reminderIntervalMinutes < 1 || draft.reminderIntervalMinutes > 2147483647
   const wait = secondsToHMS(draft.waitSeconds)
   const duration = secondsToHMS(draft.durationSeconds)
@@ -86,15 +87,25 @@ export function StageTime({ draft, setDraft }: { draft: FrictionAppDraft; setDra
       <Field orientation="horizontal" className="relative rounded-xl border px-3 py-2">
         <FieldContent>
           <FieldLabel htmlFor="unlimited">Unlimited duration</FieldLabel>
-          <FieldDescription id="unlimited-hint">Unlocked until you leave the app.</FieldDescription>
+          <FieldDescription id="unlimited-hint">Unlocked while using the app. Quick returns skip another wait.</FieldDescription>
         </FieldContent>
         <Switch id="unlimited" aria-describedby="unlimited-hint" checked={draft.durationSeconds === 0} onCheckedChange={(unlimited) => {
           if (unlimited) setFiniteDuration(draft.durationSeconds)
-          setDraft((current) => ({ ...current, durationSeconds: unlimited ? 0 : finiteDuration }))
+          setDraft((current) => ({ ...current, durationSeconds: unlimited ? 0 : finiteDuration,
+            returnGraceSeconds: !unlimited && returnGraceInvalid ? 30 : current.returnGraceSeconds,
+          }))
         }} />
       </Field>
       {draft.durationSeconds !== 0 && <TimeBlock label="Duration" hint="Time unlocked (1s minimum)." {...duration}
         onChange={(h, m, s) => setDraft((current) => ({ ...current, durationSeconds: hmsToSeconds(h, m, s) }))} />}
+      {draft.durationSeconds === 0 && <Field className="gap-2" data-invalid={returnGraceInvalid || undefined}>
+        <FieldLabel htmlFor="return-grace-seconds">Return window (seconds)</FieldLabel>
+        <Input id="return-grace-seconds" type="number" min={0} max={2147483647} step={1} required
+          aria-invalid={returnGraceInvalid || undefined} aria-describedby="return-grace-hint"
+          value={Number.isNaN(draft.returnGraceSeconds) ? "" : draft.returnGraceSeconds}
+          onChange={event => setDraft(current => ({ ...current, returnGraceSeconds: event.target.valueAsNumber }))} />
+        <FieldDescription id="return-grace-hint">For unlimited sessions: return within this time to skip another wait. Set 0 to disable.</FieldDescription>
+      </Field>}
       <Field orientation="horizontal" className="relative rounded-xl border px-3 py-2">
         <FieldContent>
           <FieldLabel htmlFor="session-reminders">Session reminders</FieldLabel>

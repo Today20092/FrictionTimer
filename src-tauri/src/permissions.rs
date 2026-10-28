@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
-use tauri::{
-    plugin::{Builder, TauriPlugin},
-    AppHandle, Manager, Runtime,
-};
+use tauri::plugin::{Builder, TauriPlugin};
+use tauri::{AppHandle, Manager, Runtime};
 
 #[cfg(target_os = "android")]
 use tauri::plugin::PluginHandle;

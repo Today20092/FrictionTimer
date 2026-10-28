@@ -7,6 +7,7 @@ export const savedApp: FrictionApp = {
   name: "Reader",
   waitSeconds: 20,
   durationSeconds: 300,
+  returnGraceSeconds: 30,
   reminderEnabled: false,
   reminderIntervalMinutes: 10,
   messages: ["Take a breath."],

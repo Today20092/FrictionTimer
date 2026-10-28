@@ -52,6 +52,6 @@ class FrictionReminderSessionTest {
     foreground.onUnlimitedSessionStarted("app")
     foreground.onScreenOff()
     assertNull(foreground.unlimitedSessionPackage)
-    assertEquals("app", foreground.onForegroundObserved("app").packageToEvaluateForOverlay)
+    assertEquals("app", foreground.onForegroundObserved("app", 0L).packageToEvaluateForOverlay)
   }
 }

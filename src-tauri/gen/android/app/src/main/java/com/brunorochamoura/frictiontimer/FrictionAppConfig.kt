@@ -6,6 +6,7 @@ data class FrictionAppConfig(
   val waitSeconds: Long,
   val durationSeconds: Long,
   val messages: List<String>,
+  val returnGraceSeconds: Long = 30L,
   val reminderEnabled: Boolean = false,
   val reminderIntervalMinutes: Long = 10L,
 )

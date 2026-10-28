@@ -1044,7 +1044,7 @@ dependencies = [
 
 [[package]]
 name = "friction_timer"
-version = "2.2.2"
+version = "2.3.0"
 dependencies = [
  "rusqlite",
  "serde",

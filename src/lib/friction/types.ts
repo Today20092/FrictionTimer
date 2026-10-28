@@ -5,7 +5,8 @@ export type FrictionApp = {
   appId: string; // e.g. com.instagram.android
   name: string; // human readable
   waitSeconds: number; // wait before unlock
-  durationSeconds: number; // 0 = unlocked until leaving the app; otherwise seconds
+  durationSeconds: number; // 0 = unlimited session with a return window; otherwise seconds
+  returnGraceSeconds: number; // allowed time away from an unlimited session; 0 disables it
   messages: string[]; // lines shown during wait
   reminderEnabled: boolean;
   reminderIntervalMinutes: number;
