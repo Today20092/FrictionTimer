@@ -87,6 +87,8 @@ pub struct FrictionAppDefaults {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_seconds: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub return_grace_seconds: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub messages: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_reminders: Option<SessionReminderDefaults>,
@@ -166,6 +168,7 @@ pub fn initialize_database(db_path: &Path) -> Result<(), StorageError> {
             messages_json TEXT,
             reminder_enabled INTEGER,
             reminder_interval_minutes INTEGER,
+            return_grace_seconds INTEGER,
             CHECK ((reminder_enabled IS NULL) = (reminder_interval_minutes IS NULL))
         );",
     )?;
@@ -193,6 +196,16 @@ pub fn initialize_database(db_path: &Path) -> Result<(), StorageError> {
     {
         transaction.execute_batch(
             "ALTER TABLE friction_apps ADD COLUMN return_grace_seconds INTEGER NOT NULL DEFAULT 30",
+        )?;
+    }
+    let has_return_default: bool = transaction.query_row(
+        "SELECT EXISTS(SELECT 1 FROM pragma_table_info('friction_app_defaults') WHERE name = 'return_grace_seconds')",
+        [],
+        |row| row.get(0),
+    )?;
+    if !has_return_default {
+        transaction.execute_batch(
+            "ALTER TABLE friction_app_defaults ADD COLUMN return_grace_seconds INTEGER",
         )?;
     }
     transaction.commit()?;
@@ -295,7 +308,7 @@ pub fn delete_app(db_path: &Path, id: &str) -> Result<(), StorageError> {
 pub fn get_app_defaults(db_path: &Path) -> Result<FrictionAppDefaults, StorageError> {
     let conn = open_connection(db_path)?;
     conn.query_row(
-        "SELECT wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes
+        "SELECT wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes, return_grace_seconds
          FROM friction_app_defaults WHERE id = 1",
         [],
         map_defaults_row,
@@ -313,20 +326,22 @@ pub fn set_app_defaults(
     let conn = open_connection(db_path)?;
     conn.execute(
         "INSERT INTO friction_app_defaults
-            (id, wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes)
-         VALUES (1, ?1, ?2, ?3, ?4, ?5)
+            (id, wait_seconds, duration_seconds, messages_json, reminder_enabled, reminder_interval_minutes, return_grace_seconds)
+         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6)
          ON CONFLICT(id) DO UPDATE SET
             wait_seconds = excluded.wait_seconds,
             duration_seconds = excluded.duration_seconds,
             messages_json = excluded.messages_json,
             reminder_enabled = excluded.reminder_enabled,
-            reminder_interval_minutes = excluded.reminder_interval_minutes",
+            reminder_interval_minutes = excluded.reminder_interval_minutes,
+            return_grace_seconds = excluded.return_grace_seconds",
         params![
             defaults.wait_seconds,
             defaults.duration_seconds,
             defaults.messages.as_ref().map(serde_json::to_string).transpose()?,
             defaults.session_reminders.as_ref().map(|value| value.enabled),
             defaults.session_reminders.as_ref().map(|value| value.interval_minutes),
+            defaults.return_grace_seconds,
         ],
     )?;
     Ok(defaults)
@@ -361,7 +376,8 @@ pub fn apply_app_defaults(
                 duration_seconds = COALESCE(?3, duration_seconds),
                 messages_json = COALESCE(?4, messages_json),
                 reminder_enabled = COALESCE(?5, reminder_enabled),
-                reminder_interval_minutes = COALESCE(?6, reminder_interval_minutes)
+                reminder_interval_minutes = COALESCE(?6, reminder_interval_minutes),
+                return_grace_seconds = COALESCE(?7, return_grace_seconds)
              WHERE id = ?1",
             params![
                 id,
@@ -380,6 +396,7 @@ pub fn apply_app_defaults(
                     .session_reminders
                     .as_ref()
                     .map(|value| value.interval_minutes),
+                defaults.return_grace_seconds,
             ],
         )?;
         if rows == 0 {
@@ -427,6 +444,7 @@ fn map_defaults_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<FrictionAppDefa
     Ok(FrictionAppDefaults {
         wait_seconds: row.get(0)?,
         duration_seconds: row.get(1)?,
+        return_grace_seconds: row.get(5)?,
         messages: messages_json
             .map(|json| serde_json::from_str(&json).map_err(|err| to_sql_error(2, err)))
             .transpose()?,
@@ -442,6 +460,9 @@ fn normalize_defaults(
     }
     if let Some(value) = defaults.duration_seconds {
         defaults.duration_seconds = Some(validate_duration(value)?);
+    }
+    if let Some(value) = defaults.return_grace_seconds {
+        defaults.return_grace_seconds = Some(validate_return_grace(value)?);
     }
     if let Some(messages) = defaults.messages.take() {
         defaults.messages = Some(normalize_messages(messages));
@@ -644,7 +665,11 @@ mod tests {
             "Wrong app column: {app_error:?}"
         );
         let defaults_error = conn
-            .query_row("SELECT NULL, NULL, '{', NULL, NULL", [], map_defaults_row)
+            .query_row(
+                "SELECT NULL, NULL, '{', NULL, NULL, NULL",
+                [],
+                map_defaults_row,
+            )
             .expect_err("Malformed default messages must fail to load");
         assert!(
             matches!(
@@ -858,6 +883,143 @@ mod tests {
                     ..FrictionAppDefaults::default()
                 },
             }
+        )
+        .is_err());
+        let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn return_window_defaults_round_trip_and_apply_only_when_selected() {
+        let db_path = temp_db_path("return-defaults");
+        let first = create_app(&db_path, sample_input()).expect("Create first app");
+        let second = create_app(
+            &db_path,
+            CreateAppInput {
+                app_id: "com.second".into(),
+                return_grace_seconds: 60,
+                ..sample_input()
+            },
+        )
+        .expect("Create second app");
+        for seconds in [20, 0] {
+            let defaults = FrictionAppDefaults {
+                return_grace_seconds: Some(seconds),
+                ..FrictionAppDefaults::default()
+            };
+            set_app_defaults(&db_path, defaults.clone()).expect("Save return default");
+            assert_eq!(
+                get_app_defaults(&db_path).expect("Reload defaults"),
+                defaults
+            );
+            assert_eq!(
+                apply_app_defaults(
+                    &db_path,
+                    ApplyAppDefaultsInput {
+                        app_ids: vec![first.id.clone()],
+                        defaults,
+                    }
+                )
+                .expect("Apply return default"),
+                1
+            );
+            let updated = get_app(&db_path, &first.id)
+                .expect("Load first app")
+                .expect("First app exists");
+            assert_eq!(
+                updated,
+                FrictionApp {
+                    return_grace_seconds: seconds,
+                    ..first.clone()
+                }
+            );
+            assert_eq!(
+                get_app(&db_path, &second.id).expect("Load second app"),
+                Some(second.clone())
+            );
+        }
+        apply_app_defaults(
+            &db_path,
+            ApplyAppDefaultsInput {
+                app_ids: vec![first.id.clone()],
+                defaults: FrictionAppDefaults {
+                    wait_seconds: Some(12),
+                    ..FrictionAppDefaults::default()
+                },
+            },
+        )
+        .expect("Applying other fields preserves a disabled return window");
+        assert_eq!(
+            get_app(&db_path, &first.id)
+                .expect("Reload first app")
+                .expect("First app exists")
+                .return_grace_seconds,
+            0
+        );
+        set_app_defaults(&db_path, FrictionAppDefaults::default())
+            .expect("Clear selected defaults");
+        let cleared = get_app_defaults(&db_path).expect("Reload cleared defaults");
+        assert_eq!(cleared.return_grace_seconds, None);
+        assert!(serde_json::to_value(cleared)
+            .expect("Serialize cleared defaults")
+            .get("returnGraceSeconds")
+            .is_none());
+        let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn existing_defaults_migrate_and_invalid_return_defaults_leave_settings_unchanged() {
+        let db_path = temp_db_path("return-default-migration");
+        let conn = Connection::open(&db_path).expect("Open legacy defaults database");
+        conn.execute_batch(
+            "CREATE TABLE friction_app_defaults (
+            id INTEGER PRIMARY KEY CHECK (id = 1), wait_seconds INTEGER, duration_seconds INTEGER,
+            messages_json TEXT, reminder_enabled INTEGER, reminder_interval_minutes INTEGER);
+            INSERT INTO friction_app_defaults VALUES (1, 12, 0, '[\"Keep focused\"]', 1, 7);",
+        )
+        .expect("Create v2.3.0 defaults fixture");
+        drop(conn);
+        let expected = FrictionAppDefaults {
+            wait_seconds: Some(12),
+            duration_seconds: Some(0),
+            messages: Some(vec!["Keep focused".into()]),
+            session_reminders: Some(SessionReminderDefaults {
+                enabled: true,
+                interval_minutes: 7,
+            }),
+            return_grace_seconds: None,
+        };
+        for _ in 0..2 {
+            assert_eq!(
+                get_app_defaults(&db_path).expect("Migrate legacy defaults"),
+                expected
+            );
+        }
+        let app = create_app(&db_path, sample_input()).expect("Create app for validation");
+        for seconds in [-1, i64::from(i32::MAX) + 1] {
+            let defaults = FrictionAppDefaults {
+                return_grace_seconds: Some(seconds),
+                ..FrictionAppDefaults::default()
+            };
+            assert!(set_app_defaults(&db_path, defaults.clone()).is_err());
+            assert!(apply_app_defaults(
+                &db_path,
+                ApplyAppDefaultsInput {
+                    app_ids: vec![app.id.clone()],
+                    defaults
+                }
+            )
+            .is_err());
+            assert_eq!(
+                get_app_defaults(&db_path).expect("Defaults unchanged after rejection"),
+                expected
+            );
+            assert_eq!(
+                get_app(&db_path, &app.id).expect("App unchanged after rejection"),
+                Some(app.clone())
+            );
+        }
+        assert!(serde_json::from_value::<FrictionAppDefaults>(
+            serde_json::json!({"returnGraceSeconds": 1.5})
         )
         .is_err());
         let _ = fs::remove_file(db_path);
